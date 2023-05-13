@@ -1,3 +1,4 @@
+import socket
 class Server:
     def __init__(self, host='localhost', port=5000, buffer_size=257*257, episodes=10):
         self.HOST = host
@@ -14,4 +15,3 @@ class Server:
             s.listen()
             self.conn, self.addr = s.accept()
             print('Connected by', self.addr)
-            self.start()
