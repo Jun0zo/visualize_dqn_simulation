@@ -1,24 +1,24 @@
-from keras.layers.convolutional import Conv2D
-from keras.layers import Dense, Flatten
-from keras.optimizers import RMSprop
-from keras.models import Sequential
-import numpy as np
-import socket
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 import random
-import struct
+import numpy as np
 from collections import deque
-from keras import backend as K
-import tensorflow as tf
-
-from Server import Server
 from Environment import Environment
 
-class DQNAgent:
-    def __init__(self, env, action_size):
-        self.env = env
+class Agent:
+    def __init__(self, action_size):
         # 상태와 행동의 크기 정의
-        self.state_size = (84, 84, 4)
+        self.state_size = (256, 256, 3)
         self.action_size = action_size
+        self.EPISODES = 10
+
+class DQNAgent(Agent):
+    def __init__(self, env, action_size):
+        super().__init__(action_size)
+        self.env = env
+        
         # DQN 하이퍼파라미터
         self.epsilon = 1.
         self.epsilon_start, self.epsilon_end = 1.0, 0.1
@@ -26,7 +26,8 @@ class DQNAgent:
         self.epsilon_decay_step = (self.epsilon_start - self.epsilon_end) \
                                   / self.exploration_steps
         self.batch_size = 32
-        self.train_start = 50000
+        # self.train_start = 50000
+        self.train_start = 500
         self.update_target_rate = 10000
         self.discount_factor = 0.99
 
@@ -42,36 +43,35 @@ class DQNAgent:
 
     # Huber Loss를 이용하기 위해 최적화 함수를 직접 정의
     def optimizer(self):
-        a = K.placeholder(shape=(None,), dtype='int32')
-        y = K.placeholder(shape=(None,), dtype='float32')
-
-        prediction = self.model.output
-
-        a_one_hot = K.one_hot(a, self.action_size)
-        q_value = K.sum(prediction * a_one_hot, axis=1)
-        error = K.abs(y - q_value)
-
-        quadratic_part = K.clip(error, 0.0, 1.0)
-        linear_part = error - quadratic_part
-        loss = K.mean(0.5 * K.square(quadratic_part) + linear_part)
-
-        optimizer = RMSprop(lr=0.00025, epsilon=0.01)
-        updates = optimizer.get_updates(self.model.trainable_weights, [], loss)
-        train = K.function([self.model.input, a, y], [loss], updates=updates)
-
+        def train(inputs, a, y):
+            self.optimizer.zero_grad()
+            prediction = self.model(inputs)
+            a_one_hot = torch.nn.functional.one_hot(a, self.action_size)
+            q_value = torch.sum(prediction * a_one_hot, dim=1)
+            error = torch.abs(y - q_value)
+            quadratic_part = torch.clamp(error, 0.0, 1.0)
+            linear_part = error - quadratic_part
+            loss = torch.mean(0.5 * torch.square(quadratic_part) + linear_part)
+            loss.backward()
+            self.optimizer.step()
+            return loss.item()
+        
         return train
 
     # 상태가 입력, 큐함수가 출력인 인공신경망 생성
     def build_model(self):
-        model = Sequential()
-        model.add(Conv2D(32, (8, 8), strides=(4, 4), activation='relu',
-                         input_shape=self.state_size))
-        model.add(Conv2D(64, (4, 4), strides=(2, 2), activation='relu'))
-        model.add(Conv2D(64, (3, 3), strides=(1, 1), activation='relu'))
-        model.add(Flatten())
-        model.add(Dense(512, activation='relu'))
-        model.add(Dense(self.action_size))
-        model.summary()
+        model = nn.Sequential(
+            nn.Conv2d(self.state_size[2], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+            nn.Linear(512, self.action_size)
+        )
         return model
 
     def update_target_model(self):
@@ -90,7 +90,7 @@ class DQNAgent:
 
     # 타겟 모델을 모델의 가중치로 업데이트
     def update_target_model(self):
-        self.target_model.set_weights(self.model.get_weights())
+        self.target_model.load_state_dict(self.model.state_dict())
 
 
     # 리플레이 메모리에서 무작위로 추출한 배치로 모델 학습
@@ -108,13 +108,13 @@ class DQNAgent:
         action, reward, dead = [], [], []
 
         for i in range(self.batch_size):
-            history[i] = np.float32(mini_batch[i][0] / 255.)
-            next_history[i] = np.float32(mini_batch[i][3] / 255.)
+            # history[i] = np.transpose(np.float32(mini_batch[i][0] / 255.), (2, 1, 0))
+            # next_history[i] = np.float32(mini_batch[i][3] / 255.)
             action.append(mini_batch[i][1])
             reward.append(mini_batch[i][2])
             dead.append(mini_batch[i][4])
 
-        target_value = self.target_model.predict(next_history)
+        target_value = self.target_model(next_history[0]).detach()
 
         for i in range(self.batch_size):
             if dead[i]:
@@ -123,33 +123,72 @@ class DQNAgent:
                 target[i] = reward[i] + self.discount_factor * \
                                         np.amax(target_value[i])
 
-        loss = self.optimizer([history, action, target])
-        self.avg_loss += loss[0]
+        loss = F.mse_loss(self.model(history).gather(1, action.unsqueeze(1)), target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        self.avg_loss += loss.item()
 
     def start(self):
         cnt = 0
         for e in range(self.EPISODES):
             done = False
             step = 0
-            while True:
-                try:
-                    # Receive any messages from the client and print them out
-                    reward, current_position, image_bytes = self.get_current_states()
-                    print('Received:', reward, current_position)
-                    
-                    next_action = self.getRandomAction()
+            dead = False
 
-                    # print(next_action, next_action.encode())
-                    self.conn.send(next_action.encode())
-                except socket.timeout:
-                    print('Timeout occurred')
-                    continue
+            # for _ in range(random.randint(1, self.no_op_steps)):
+            #     print('gggg')
+            _, _, observe = self.env.step(1)
+
+            state = observe
+            history = np.stack((state, state, state, state), axis=2)
+            history = np.reshape([history], (3, 256, 256, 4))
+
+            while True:
+                # try:
+                action = self.get_action(history)
+                # 선택한 행동으로 환경에서 한 타임스텝 진행
+                reward, current_position, observe = self.env.step(action)
+                # print('Received:', reward, current_position)
+
+                # 각 타임스텝마다 상태 전처리
+                
+                next_state = observe
+                next_state = np.reshape([next_state], (3, 256, 256, 1))
+                next_history = np.append(next_state, history[:, :, :, :3], axis=3)
+                
+            
                 cnt += 1
 
+                # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
+                agent.append_sample(history, action, reward, next_history, dead)
+
+                
+
+
+                print(len(agent.memory), agent.train_start)
+                if len(agent.memory) >= agent.train_start:
+                    print('train!!')
+                    agent.train_model()
+
+                # # 일정 시간마다 타겟모델을 모델의 가중치로 업데이트
+                # if global_step % agent.update_target_rate == 0:
+                #     agent.update_target_model()
+
+                if dead:
+                    dead = False
+                else:
+                    history = next_history
+
+                # except Exception as ee:
+                #     print('Timeout occurred', ee)
+                #     continue
+
     def getRandomAction(self):
-        keys = ["W", "A", "S", "D", "B"]
-        probabilities = [0.2, 0.2, 0.2, 0.2, 0.1]
-        return "+".join(random.choices(keys, probabilities, k=1))
+        # keys = ["W", "A", "S", "D", "B"]
+        keys = [0, 1, 2, 3, 4, 5]
+        probabilities = [0.05, 0.27, 0.1, 0.27, 0.25, 0.1]
+        return random.choices(keys, probabilities, k=1)[0]
 
     def getAction(self):
         pass
@@ -163,5 +202,6 @@ class DQNAgent:
 
 if __name__ == '__main__':
     env = Environment()
-    agent = DQNAgent(env)
+    agent = DQNAgent(env, 6)
+    
     agent.start()
