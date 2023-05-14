@@ -19,7 +19,7 @@ class Agent:
         self.EPISODES = 10
 
 class DQNAgent(Agent):
-    def __init__(self, env, state_space, action_space, replace_target_cnt=10000, gamma=0.99, eps_strt=0.1, 
+    def __init__(self, env, state_space, action_space, train_cnt=10000, replace_target_cnt=10000, gamma=0.99, eps_strt=0.1, 
                 eps_end=0.001, eps_dec=5e-6, batch_size=32, lr=0.001):
         super().__init__(state_space, action_space)
         self.env = env
@@ -38,6 +38,8 @@ class DQNAgent(Agent):
 
         # Initialise Replay Memory
         self.memory = ReplayBuffer()
+        
+        self.train_cnt = train_cnt
 
         # After how many training iterations the target network should update
         self.replace_target_cnt = replace_target_cnt
@@ -107,8 +109,9 @@ class DQNAgent(Agent):
 
     # Samples a single batch according to batchsize and updates the policy net
     def learn(self, num_iters=1):
+        print('pointer :', self.memory.pointer)
         if self.memory.pointer < self.batch_size:
-            return 
+            return
 
         for i in range(num_iters):
 
@@ -172,8 +175,14 @@ class DQNAgent(Agent):
                 state = state_
                 cnt += 1
                 
-                if cnt == 500:
+                print(cnt)
+                if cnt == 5000:
                     done = True
+                    
+                if cnt % 1000 == 0:
+                    # Train on as many transitions as there have been added in the episode
+                    print(f'Learning x{math.ceil(cnt/self.batch_size)}')
+                    self.learn(math.ceil(cnt/self.batch_size))
 
             # Maintain record of the max score achieved so far
             if score > max_score:
@@ -183,9 +192,7 @@ class DQNAgent(Agent):
             print(f'Episode {i}/{num_eps}: \n\tScore: {score}\n\tAvg score (past 100):\
                 \n\tEpsilon: {self.eps}\n\tTransitions added: {cnt}')
             
-            # Train on as many transitions as there have been added in the episode
-            print(f'Learning x{math.ceil(cnt/self.batch_size)}')
-            self.learn(math.ceil(cnt/self.batch_size))
+            
 
     def getRandomAction(self):
         # keys = ["W", "A", "S", "D", "B"]
