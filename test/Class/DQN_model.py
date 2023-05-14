@@ -46,6 +46,23 @@ class DQN(nn.Module):
         actions = self.l2(x)
 
         return actions
+    
+    # Performs forward pass through the network, returns action values and feature maps
+    def forward2(self, x):
+        feature_maps = []
+        
+        x = self.l1[0](x)
+        feature_maps.append(x)
+        x = self.l1[1](x)
+        x = self.l1[2](x)
+        feature_maps.append(x)
+        x = self.l1[3](x)
+        feature_maps.append(x)
+        
+        x = x.view(x.shape[0], -1)
+        actions = self.l2(x)
+
+        return actions, feature_maps
 
     # Save a model
     def save_model(self):
