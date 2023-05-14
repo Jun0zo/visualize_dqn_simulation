@@ -10,7 +10,7 @@ from Environment import Environment
 class Agent:
     def __init__(self, action_size):
         # 상태와 행동의 크기 정의
-        self.state_size = (256, 256, 3)
+        self.state_size = (256, 256, 3, 4)
         self.action_size = action_size
         self.EPISODES = 10
 
@@ -61,7 +61,7 @@ class DQNAgent(Agent):
     # 상태가 입력, 큐함수가 출력인 인공신경망 생성
     def build_model(self):
         model = nn.Sequential(
-            nn.Conv2d(self.state_size[2], 32, kernel_size=8, stride=4),
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
