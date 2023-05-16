@@ -4,6 +4,10 @@ from Server import Server
 from PIL import Image
 import io
 
+BYTE_SIZE = 1
+INT_SIZE = 4
+FLOAT_SIZE = 4
+
 class Environment:
     def __init__(self):
         self.server = Server()
@@ -19,10 +23,14 @@ class Environment:
 
         # print(next_action)
         # Receive isDead
-        reward = self.server.conn.recv(1)
+        is_done = self.server.conn.recv(BYTE_SIZE)
+        reward = self.server.conn.recv(FLOAT_SIZE)
         # Receive currentPosition
-        current_pos_data = self.server.conn.recv(2 * 4)
+
+        print(reward)
+        current_pos_data = self.server.conn.recv(2 * INT_SIZE)
         current_position = list(struct.unpack(str(2) + 'i', current_pos_data))
+        print(current_pos_data)
 
         # Receive Imagebytes
         image_bytes = self.server.conn.recv(self.server.BUFFER_SIZE)
@@ -33,4 +41,4 @@ class Environment:
 
 
         self.server.conn.send(next_action.encode())
-        return reward, current_position, image
+        return is_done, reward, current_position, image

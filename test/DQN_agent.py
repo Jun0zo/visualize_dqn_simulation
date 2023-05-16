@@ -5,7 +5,9 @@ import torch.nn.functional as F
 import random
 import numpy as np
 import math
-from Class.Environment import TestEnvironment
+from tqdm import tqdm
+from collections import deque
+from Class.Environment import TestEnvironment, Environment
 from Class.ReplayBuffer import ReplayBuffer
 from Class.transforms import Transforms
 from Class.DQN_model import DQN
@@ -19,7 +21,7 @@ class Agent:
         self.EPISODES = 10
 
 class DQNAgent(Agent):
-    def __init__(self, env, state_space, action_space, train_cnt=10000, replace_target_cnt=10000, gamma=0.99, eps_strt=0.1, 
+    def __init__(self, env, state_space, action_space, pretrained_model_path='./models', save_model_path='./models', train_cnt=5000, replace_target_cnt=3000, gamma=0.99, eps_strt=0.1, 
                 eps_end=0.001, eps_dec=5e-6, batch_size=32, lr=0.001):
         super().__init__(state_space, action_space)
         self.env = env
@@ -37,7 +39,7 @@ class DQNAgent(Agent):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         # Initialise Replay Memory
-        self.memory = ReplayBuffer()
+        self.memory = deque(maxlen=100000)
         
         self.train_cnt = train_cnt
 
@@ -46,7 +48,7 @@ class DQNAgent(Agent):
         self.learn_counter = 0
 
         # Initialise policy and target networks, set target network to eval mode
-        self.policy_net = DQN(self.state_space, self.action_space, filename='test').to(self.device)
+        self.policy_net = DQN(self.state_space, self.action_space, filename='test', pretrained_model_path=pretrained_model_path, save_model_path=save_model_path).to(self.device)
         self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target').to(self.device)
         self.target_net.eval()
 
@@ -54,8 +56,8 @@ class DQNAgent(Agent):
         try:
             self.policy_net.load_model()
             print('loaded pretrained model')
-        except:
-            pass
+        except Exception as e:
+            print('err : ', e)
         
         # Set target net to be the same as policy net
         self.replace_target_net()
@@ -71,23 +73,23 @@ class DQNAgent(Agent):
             print('Target network replaced')
 
     # Returns the greedy action according to the policy net
-    def greedy_action(self, obs):
-        obs = torch.tensor(obs).float().to(self.device)
-        obs = obs.unsqueeze(0)
-        action = self.policy_net(obs).argmax().item()
+    def greedy_action(self, history):
+        history = torch.tensor(history).float().to(self.device) # torch([256, 256])
+        # history = history.squeeze(0)  # torch([1, 256, 256])
+        action = self.policy_net(history).argmax().item()
         return action
 
     # Returns an action based on epsilon greedy method
-    def choose_action(self, obs):
+    def choose_action(self, history):
         if random.random() > self.eps:
-            action = self.greedy_action(obs)
+            action = self.greedy_action(history)
         else:
             action = random.choice([x for x in range(self.action_space)])
         return action
         
     # Stores a transition into memory
-    def store_transition(self, *args):
-        self.memory.add_transition(*args)
+    def append_sample(self, *args):
+        self.memory.append(args)
         
     # Decrement epsilon 
     def dec_eps(self):
@@ -95,34 +97,37 @@ class DQNAgent(Agent):
                         else self.eps_end
 
     def sample_batch(self):
-        batch = self.memory.sample_batch(self.batch_size)
-        state_shape = batch.state[0].shape
+        mini_batch = random.sample(self.memory, self.batch_size)
 
-        # Convert to tensors with correct dimensions
-        state = torch.tensor(batch.state).view(self.batch_size, -1, state_shape[1], state_shape[2]).float().to(self.device)
-        action = torch.tensor(batch.action).unsqueeze(1).to(self.device)
-        reward = torch.tensor(batch.reward).float().unsqueeze(1).to(self.device)
-        state_ = torch.tensor(batch.state_).view(self.batch_size, -1, state_shape[1], state_shape[2]).float().to(self.device)
-        done = torch.tensor(batch.done).float().unsqueeze(1).to(self.device)
+        history = torch.zeros((self.batch_size, self.state_space[0],
+                                self.state_space[1], self.state_space[2]))
+        next_history = torch.zeros((self.batch_size, self.state_space[0],
+                                    self.state_space[1], self.state_space[2]))
+        target = torch.zeros((self.batch_size,))
+        action, reward, done = [], [], []
 
-        return state, action, reward, state_, done
+        for i in range(self.batch_size):
+            history_, action_, reward_, next_history_, done_ = mini_batch[i]
+            history[i] = torch.FloatTensor(history_[0]/255.)
+            next_history[i] = torch.FloatTensor(next_history_[0]/255.)
+            action.append(action_)
+            reward.append(reward_)
+            done.append(done_)
+
+        return history, torch.tensor(action), torch.tensor(reward), next_history, torch.tensor(done)
 
     # Samples a single batch according to batchsize and updates the policy net
-    def learn(self, num_iters=1):
-        print('pointer :', self.memory.pointer)
-        if self.memory.pointer < self.batch_size:
-            return
-
-        for i in range(num_iters):
+    def learn(self, num_iters=100):
+        for i in tqdm(range(num_iters)):
 
             # Sample batch
-            state, action, reward, state_, done = self.sample_batch()
+            history, action, reward, next_history, done = self.sample_batch()
 
             # Calculate the value of the action taken
-            q_eval = self.policy_net(state).gather(1, action)
+            q_eval = self.policy_net(history).gather(1, action.unsqueeze(1))
 
             # Calculate best next action value from the target net and detach from graph
-            q_next = self.target_net(state_).detach().max(1)[0].unsqueeze(1)
+            q_next = self.target_net(next_history).detach().max(1)[0].unsqueeze(1)
             # Using q_next and reward, calculate q_target
             # (1-done) ensures q_target is 0 if transition is in a terminating state
             q_target = (1-done) * (reward + self.GAMMA * q_next) + (done * reward)
@@ -143,55 +148,53 @@ class DQNAgent(Agent):
             self.replace_target_net()
 
         # Save model & decrement epsilon
-        # self.policy_net.save_model()
         self.dec_eps()
 
     # Plays num_eps amount of games, while optimizing the model after each episode
-    def train(self, num_eps=100, render=False):
+    def train(self, num_eps=1000, render=False):
         scores = []
+        history = []
 
-        max_score = 0
-
-        for i in range(num_eps):
+        print('train_start')
+        for i in range(1, num_eps):
             done = False
 
             # Reset environment and preprocess state
-            _, _, obs = self.env.step(1)
+            _, _, _, obs = self.env.step(1)
             state = obs
+            history = np.stack((state, state, state, state), axis=0)
+            history = np.reshape([history], (4, 1, 256, 256))
             
             score = 0
             cnt = 0
+            
             while not done:
                 # Take epsilon greedy action
-                action = self.choose_action(state)
-                reward, current_position, obs_ = self.env.step(action)
+                action = self.choose_action(history)
+                
+                done, reward, current_position, observe = self.env.step(action)
 
-                # Preprocess next state and store transition
-                state_ = obs_
-                self.store_transition(state, action, reward, state_, int(done), obs)
+                next_state = observe
+                next_state = np.reshape([next_state], (1, 1, 256, 256))
+                next_history = np.append(next_state, history[:3,:, :, :], axis=0)
+                
+                self.append_sample(history, action, reward, next_history, int(done))
 
                 score += reward
-                obs = obs_
-                state = state_
                 cnt += 1
                 
-                print(cnt)
-                if cnt == 5000:
-                    done = True
-                    
                 if cnt % 1000 == 0:
+                    print('cnt :', cnt)
+                if len(self.memory) % self.train_cnt == 0:
                     # Train on as many transitions as there have been added in the episode
-                    print(f'Learning x{math.ceil(cnt/self.batch_size)}')
-                    self.learn(math.ceil(cnt/self.batch_size))
+                    print(f'Learning at {i}, {len(self.memory)}, score : {score}')
+                    self.learn()
 
-            # Maintain record of the max score achieved so far
-            if score > max_score:
-                max_score = score
 
             scores.append(score)
-            print(f'Episode {i}/{num_eps}: \n\tScore: {score}\n\tAvg score (past 100):\
-                \n\tEpsilon: {self.eps}\n\tTransitions added: {cnt}')
-            
+            print(f'Episode {i}/{num_eps}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
+            self.policy_net.save_model()
+            done = False
             
 
     def getRandomAction(self):
@@ -203,15 +206,12 @@ class DQNAgent(Agent):
     def getAction(self):
         pass
 
-    def save_image(self):
-        # with open('received_image.jpg', 'wb') as f:
-        #     f.write(data)
-        pass
+    
 
     
 
 if __name__ == '__main__':
-    env = TestEnvironment()
-    agent = DQNAgent(env, state_space=(3, 256, 256), action_space=6)
+    env = Environment()
+    agent = DQNAgent(env, state_space=(1, 256, 256), pretrained_model_path='./models_/curve_away_hard/', save_model_path='./models_/curve_away_hard/', action_space=6)
     
     agent.train()

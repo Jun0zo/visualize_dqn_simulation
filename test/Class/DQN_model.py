@@ -1,11 +1,23 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import os
+
+
+def count_files_in_folder(folder_path):
+    file_count = 0
+    for _, _, files in os.walk(folder_path):
+        file_count += len(files)
+    return file_count
 
 # This class defines the DQN network structure
 class DQN(nn.Module):
-    def __init__(self, input_dim, output_dim, filename):
+    def __init__(self, input_dim, output_dim, filename, pretrained_model_path='./models', save_model_path='./models'):
         super(DQN, self).__init__()
+
+        self.pretrained_model_path = pretrained_model_path
+        self.save_model_path = save_model_path
+
         self.input_dim = input_dim
         channels, _, _ = input_dim
 
@@ -44,6 +56,8 @@ class DQN(nn.Module):
         x = self.l1(x)
         x = x.view(x.shape[0], -1)
         actions = self.l2(x)
+        # print('actions:', actions.shape)
+        # print('action : ', actions.argmax().item())
 
         return actions
     
@@ -65,9 +79,18 @@ class DQN(nn.Module):
         return actions, feature_maps
 
     # Save a model
-    def save_model(self):
-        torch.save(self.state_dict(), './models/' + self.filename + '.pth')
+    def save_model(self, is_idx=True):
+        if is_idx:
+            num_files = count_files_in_folder(self.save_model_path)
+            torch.save(self.state_dict(), self.save_model_path + str(num_files + 1) + '.pth')
+        else:
+            torch.save(self.state_dict(), self.save_model_path + self.filename + '.pth')
 
     # Loads a model
-    def load_model(self):
-        self.load_state_dict(torch.load('./models/' + self.filename + '.pth'))
+    def load_model(self, is_idx=True):
+        if is_idx:
+            num_files = count_files_in_folder(self.pretrained_model_path)
+            self.load_state_dict(torch.load(self.pretrained_model_path + str(num_files) + '.pth'))
+            print('model loaded! : ', self.pretrained_model_path + str(num_files) + '.pth')
+        else:
+            self.load_state_dict(torch.load(self.pretrained_model_path + self.filename + '.pth'))
