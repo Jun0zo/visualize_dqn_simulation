@@ -3,13 +3,6 @@ import torch.nn as nn
 import numpy as np
 import os
 
-
-def count_files_in_folder(folder_path):
-    file_count = 0
-    for _, _, files in os.walk(folder_path):
-        file_count += len(files)
-    return file_count
-
 # This class defines the DQN network structure
 class DQN(nn.Module):
     def __init__(self, input_dim, output_dim, filename, pretrained_model_path='./models', save_model_path='./models'):
@@ -81,16 +74,18 @@ class DQN(nn.Module):
     # Save a model
     def save_model(self, is_idx=True):
         if is_idx:
-            num_files = count_files_in_folder(self.save_model_path)
-            torch.save(self.state_dict(), self.save_model_path + str(num_files + 1) + '.pth')
+            num_files = len(os.listdir(self.save_model_path))
+            torch.save(self.state_dict(), os.path.join(self.save_model_path, f'{num_files + 1}.pth'))
         else:
-            torch.save(self.state_dict(), self.save_model_path + self.filename + '.pth')
+            torch.save(self.state_dict(), os.path.join(self.save_model_path, f'{self.filename}.pth'))
+
 
     # Loads a model
     def load_model(self, is_idx=True):
         if is_idx:
-            num_files = count_files_in_folder(self.pretrained_model_path)
-            self.load_state_dict(torch.load(self.pretrained_model_path + str(num_files) + '.pth'))
-            print('model loaded! : ', self.pretrained_model_path + str(num_files) + '.pth')
+            num_files = len(os.listdir(self.pretrained_model_path))
+            model_path = os.path.join(self.pretrained_model_path, f'{num_files}.pth')
         else:
-            self.load_state_dict(torch.load(self.pretrained_model_path + self.filename + '.pth'))
+            model_path = os.path.join(self.pretrained_model_path, f'{self.filename}.pth')
+        self.load_state_dict(torch.load(model_path))
+        print(f'model loaded! : {model_path}')
