@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 import random
 import numpy as np
 import math
@@ -11,7 +12,23 @@ from Class.Environment import TestEnvironment, Environment
 from Class.ReplayBuffer import ReplayBuffer
 from Class.transforms import Transforms
 from Class.DQN_model import DQN
+import os
+import matplotlib.pyplot as plt
 
+def get_highest_number(folder_path):
+    files = os.listdir(folder_path)
+    numbers = []
+
+    for file_name in files:
+        file_path = os.path.join(folder_path, file_name)
+        if os.path.isfile(file_path) and file_name.isdigit():
+            numbers.append(int(file_name))
+
+    if numbers:
+        highest_number = max(numbers)
+        return highest_number
+    else:
+        return 0
 
 class Agent:
     def __init__(self, state_space=(256, 256, 3, 4), action_space=6):
@@ -19,10 +36,25 @@ class Agent:
         self.state_space = state_space
         self.action_space = action_space
         self.EPISODES = 10
+        
 
 class DQNAgent(Agent):
-    def __init__(self, env, state_space, action_space, pretrained_model_path='./models', save_model_path='./models', train_cnt=5000, replace_target_cnt=3000, gamma=0.99, eps_strt=0.1, 
-                eps_end=0.001, eps_dec=5e-6, batch_size=32, lr=0.001):
+    def __init__(self, 
+                env, 
+                state_space, 
+                action_space, 
+                tensor_board_path='',
+                pretrained_model_path='./models', 
+                save_model_path='./models', 
+                train_cnt=5000, 
+                replace_target_cnt=3000, 
+                gamma=0.99, 
+                eps_strt=0.5, 
+                eps_end=0.001, 
+                eps_dec=5e-6, 
+                batch_size=32, 
+                lr=0.001
+                ):
         super().__init__(state_space, action_space)
         self.env = env
         
@@ -34,6 +66,9 @@ class DQNAgent(Agent):
         self.eps = eps_strt
         self.eps_dec = eps_dec
         self.eps_end = eps_end
+
+        self.start_episode = get_highest_number(pretrained_model_path)
+        print('biggest num : ', self.start_episode)
 
         # Use GPU if available
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -51,6 +86,11 @@ class DQNAgent(Agent):
         self.policy_net = DQN(self.state_space, self.action_space, filename='test', pretrained_model_path=pretrained_model_path, save_model_path=save_model_path).to(self.device)
         self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target').to(self.device)
         self.target_net.eval()
+
+        if tensor_board_path:
+            self.writer = SummaryWriter(tensor_board_path)
+        else:
+            self.writer = SummaryWriter()
 
         # If pretrained model of the modelname already exists, load it
         try:
@@ -73,18 +113,26 @@ class DQNAgent(Agent):
             print('Target network replaced')
 
     # Returns the greedy action according to the policy net
-    def greedy_action(self, history):
+    def greedy_action(self, history, save_maps):
         history = torch.tensor(history).float().to(self.device) # torch([256, 256])
+        print(torch.sum(history[0]))
         # history = history.squeeze(0)  # torch([1, 256, 256])
-        action = self.policy_net(history).argmax().item()
+        res = self.policy_net(history)
+        print('res :', res)
+        if save_maps:
+            num_files = len(os.listdir('./maps'))
+            self.policy_net.forward_and_save(history, self.writer)
+        action = res.argmax().item() % 3
         return action
 
     # Returns an action based on epsilon greedy method
-    def choose_action(self, history):
+    def choose_action(self, history, save_maps=False):
         if random.random() > self.eps:
-            action = self.greedy_action(history)
+            action = self.greedy_action(history, save_maps)
+            
         else:
             action = random.choice([x for x in range(self.action_space)])
+            print('=====================gridy', self.eps)
         return action
         
     # Stores a transition into memory
@@ -117,7 +165,7 @@ class DQNAgent(Agent):
         return history, torch.tensor(action), torch.tensor(reward), next_history, torch.tensor(done)
 
     # Samples a single batch according to batchsize and updates the policy net
-    def learn(self, num_iters=100):
+    def learn(self, num_iters=3):
         for i in tqdm(range(num_iters)):
 
             # Sample batch
@@ -141,6 +189,9 @@ class DQNAgent(Agent):
             loss.backward()
             self.optim.step()
 
+            self.writer.add_scalar('Loss', loss.item(), i)
+
+
             # Increment learn_counter (for dec_eps and replace_target_net)
             self.learn_counter += 1
 
@@ -150,13 +201,17 @@ class DQNAgent(Agent):
         # Save model & decrement epsilon
         self.dec_eps()
 
+        self.writer.flush()
+
     # Plays num_eps amount of games, while optimizing the model after each episode
-    def train(self, num_eps=1000, render=False):
+    def train(self, num_episode=1000):
         scores = []
         history = []
+        global_cnt = 0
+        learn_cnt = 0
 
         print('train_start')
-        for i in range(1, num_eps):
+        for episode_idx in range(self.start_episode, self.start_episode + num_episode):
             done = False
 
             # Reset environment and preprocess state
@@ -168,12 +223,21 @@ class DQNAgent(Agent):
             score = 0
             cnt = 0
             
+            
             while not done:
                 # Take epsilon greedy action
-                action = self.choose_action(history)
+                if global_cnt % 10000 == 0:
+                    # print('=========save===========')
+                    # action = self.choose_action(history, save_maps=True)
+                    action = self.choose_action(history)
+                else:
+                    action = self.choose_action(history)
                 
                 done, reward, current_position, observe = self.env.step(action)
 
+                # self.writer.add_scalars(f'car/{episode_idx}/position', {'x': current_position[0], 'y': current_position[1]}, global_step=episode_idx)
+                
+                print(done, reward, current_position, 'action : ', action)
                 next_state = observe
                 next_state = np.reshape([next_state], (1, 1, 256, 256))
                 next_history = np.append(next_state, history[:3,:, :, :], axis=0)
@@ -182,19 +246,40 @@ class DQNAgent(Agent):
 
                 score += reward
                 cnt += 1
+                global_cnt += 1
+
+                history = next_history
                 
-                if cnt % 1000 == 0:
+                if len(self.memory) % 1000 == 0:
                     print('cnt :', cnt)
+
+
                 if len(self.memory) % self.train_cnt == 0:
                     # Train on as many transitions as there have been added in the episode
-                    print(f'Learning at {i}, {len(self.memory)}, score : {score}')
+                    print(f'Learning at {episode_idx}, {len(self.memory)}, score : {score}')
                     self.learn()
+                    learn_cnt += 1
 
+            if done == True:
+                print('done true ======= ')
+                print(len(self.memory))
 
-            scores.append(score)
-            print(f'Episode {i}/{num_eps}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
+            if cnt < 5:
+                print('==============')
+                continue
+
+            # scores.append(score)
+            print('Sum of Reward', score)
+            print('Mean of Reward', score / cnt)
+            self.writer.add_scalar("Sum of Reward", score, episode_idx)
+            self.writer.add_scalar("Mean of Reward", score / cnt, episode_idx)
+            print(f'Episode {episode_idx}/{num_episode}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
             self.policy_net.save_model()
+            self.env.save_trace(f'./traces/eps{episode_idx}-trace.txt')
             done = False
+            
+
+        self.writer.close()
             
 
     def getRandomAction(self):
@@ -212,6 +297,12 @@ class DQNAgent(Agent):
 
 if __name__ == '__main__':
     env = Environment()
-    agent = DQNAgent(env, state_space=(1, 256, 256), pretrained_model_path='./models_/curve_away_hard/', save_model_path='./models_/curve_away_hard/', action_space=6)
+    agent = DQNAgent(env,
+                     state_space=(1, 256, 256), 
+                     action_space=3,
+                     tensor_board_path='',
+                     pretrained_model_path='./models_/new_curve_mid2/', 
+                     save_model_path='./models_/new_curve_mid2/')
     
-    agent.train()
+    agent.train(num_episode=1000)
+    

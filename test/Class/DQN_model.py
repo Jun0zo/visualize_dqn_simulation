@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from .Additional_model import BottleneckAttentionModule
 import os
+from PIL import Image
+import matplotlib.pyplot as plt
 
 # This class defines the DQN network structure
 class DQN(nn.Module):
@@ -18,8 +21,10 @@ class DQN(nn.Module):
         self.l1 = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=8, stride=4, padding=2),
             nn.ReLU(),
+            BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
             nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
         )
@@ -47,29 +52,104 @@ class DQN(nn.Module):
     # Performs forward pass through the network, returns action values
     def forward(self, x):
         x = self.l1(x)
-        x = x.view(x.shape[0], -1)
-        actions = self.l2(x)
-        # print('actions:', actions.shape)
-        # print('action : ', actions.argmax().item())
+        x = x.view(x.size(0), -1)
+        x = self.l2(x)
 
-        return actions
+        return x
     
-    # Performs forward pass through the network, returns action values and feature maps
-    def forward2(self, x):
-        feature_maps = []
-        
-        x = self.l1[0](x)
-        feature_maps.append(x)
-        x = self.l1[1](x)
-        x = self.l1[2](x)
-        feature_maps.append(x)
-        x = self.l1[3](x)
-        feature_maps.append(x)
-        
-        x = x.view(x.shape[0], -1)
-        actions = self.l2(x)
+    def forward_and_save(self, x, writer):
+        fm1 = self.l1[0](x)
+        att1 = self.l1[2](self.l1[1](fm1))
+        fm2 = self.l1[3](att1)
+        att2 = self.l1[5](self.l1[4](fm2))
+        fm3 = self.l1[6](att2)
 
-        return actions, feature_maps
+        # Save feature maps and attention maps as images
+        plt.figure(figsize=(12, 6))
+
+        # Save feature map 1
+        for i in range(fm1.size(1)):
+            plt.subplot(2, fm1.size(1), i + 1)
+            plt.imshow(fm1[0, i].detach().cpu().numpy())
+            plt.axis('off')
+
+            # Convert the plot to a tensor
+            plt.gcf().canvas.draw()
+            buffer = plt.gcf().canvas.tostring_rgb()
+            ncols, nrows = plt.gcf().canvas.get_width_height()
+            image_array = np.frombuffer(buffer, dtype=np.uint8).reshape(nrows, ncols, 3)
+            # image_array_copy = np.copy(image_array)
+            image_tensor = torch.from_numpy(np.transpose(image_array, (2, 0, 1)))
+
+            # Write the tensor as an image to TensorBoard
+            writer.add_image(f'Feature Map 1/{i}', image_tensor, dataformats='CHW')
+
+        # Save attention map 1
+        for i in range(att1.size(1)):
+            plt.subplot(2, att1.size(1), i + 1)
+            plt.imshow(att1[0, i].detach().cpu().numpy(), cmap='gray')
+            plt.axis('off')
+
+            # Convert the plot to a tensor
+            plt.gcf().canvas.draw()
+            buffer = plt.gcf().canvas.tostring_rgb()
+            ncols, nrows = plt.gcf().canvas.get_width_height()
+            image_array = np.frombuffer(buffer, dtype=np.uint8).reshape(nrows, ncols, 3)
+            image_tensor = torch.from_numpy(np.transpose(image_array, (2, 0, 1)))
+
+            # Write the tensor as an image to TensorBoard
+            writer.add_image(f'Attention Map 1/{i}', image_tensor, dataformats='CHW')
+
+        # Save feature map 2
+        for i in range(fm2.size(1)):
+            plt.subplot(2, fm2.size(1), i + 1)
+            plt.imshow(fm2[0, i].detach().cpu().numpy())
+            plt.axis('off')
+
+            # Convert the plot to a tensor
+            plt.gcf().canvas.draw()
+            buffer = plt.gcf().canvas.tostring_rgb()
+            ncols, nrows = plt.gcf().canvas.get_width_height()
+            image_array = np.frombuffer(buffer, dtype=np.uint8).reshape(nrows, ncols, 3)
+            image_tensor = torch.from_numpy(np.transpose(image_array, (2, 0, 1)))
+
+            # Write the tensor as an image to TensorBoard
+            writer.add_image(f'Feature Map 2/{i}', image_tensor, dataformats='CHW')
+
+        # Save attention map 2
+        for i in range(att2.size(1)):
+            plt.subplot(2, att2.size(1), i + 1)
+            plt.imshow(att2[0, i].detach().cpu().numpy(), cmap='gray')
+            plt.axis('off')
+
+            # Convert the plot to a tensor
+            plt.gcf().canvas.draw()
+            buffer = plt.gcf().canvas.tostring_rgb()
+            ncols, nrows = plt.gcf().canvas.get_width_height()
+            image_array = np.frombuffer(buffer, dtype=np.uint8).reshape(nrows, ncols, 3)
+            image_tensor = torch.from_numpy(np.transpose(image_array, (2, 0, 1)))
+
+            # Write the tensor as an image to TensorBoard
+            writer.add_image(f'Attention Map 2/{i}', image_tensor, dataformats='CHW')
+
+        # Save feature map 3
+        for i in range(fm3.size(1)):
+            plt.subplot(2, fm3.size(1), i + 1)
+            plt.imshow(fm3[0, i].detach().cpu().numpy())
+            plt.axis('off')
+
+            # Convert the plot to a tensor
+            plt.gcf().canvas.draw()
+            buffer = plt.gcf().canvas.tostring_rgb()
+            ncols, nrows = plt.gcf().canvas.get_width_height()
+            image_array = np.frombuffer(buffer, dtype=np.uint8).reshape(nrows, ncols, 3)
+            image_tensor = torch.from_numpy(np.transpose(image_array, (2, 0, 1)))
+
+            # Write the tensor as an image to TensorBoard
+            writer.add_image(f'Feature Map 3/{i}', image_tensor, dataformats='CHW')
+
+        writer.flush()
+
 
     # Save a model
     def save_model(self, is_idx=True):
