@@ -37,9 +37,8 @@ class Environment:
         try:
             # Receive Imagebytes
             rgba_image = Image.open(io.BytesIO(data[13:]))
+            
             gray_image = rgba_image.convert('RGB').convert('L')
-
-            # gray_image.save('received_image.png')
             image = np.asarray(gray_image)
             
             self.image_mem = image
@@ -49,10 +48,12 @@ class Environment:
             # self.server.conn.recv(self.server.BUFFER_SIZE)/
         
         self.server.conn.send(next_action.encode())
-
+        self.save_image(image)
+        
+        # print(is_done)
         # print(is_done, reward, current_position, len(data), "next :", next_action)
-        if reward % 1 != 0:
-            is_done = False
+        # if reward % 1 != 0:
+        #     is_done = False
         self.trace.append(current_position)
         return is_done, reward, current_position, image
 
@@ -69,7 +70,7 @@ class Environment:
 
     
     def save_image(self, image):
-        with open('received_image.jpg', 'wb') as f:
+        with open('received_image.png', 'wb') as f:
             f.write(image)
     
 

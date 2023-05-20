@@ -54,7 +54,7 @@ class DQN(nn.Module):
         x = self.l1(x)
         x = x.view(x.size(0), -1)
         x = self.l2(x)
-
+        print(x)
         return x
     
     def forward_and_save(self, x, writer):
