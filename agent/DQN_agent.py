@@ -21,8 +21,9 @@ def get_highest_number(folder_path):
 
     for file_name in files:
         file_path = os.path.join(folder_path, file_name)
-        if os.path.isfile(file_path) and file_name.isdigit():
-            numbers.append(int(file_name))
+        file_n = file_name.split('.')[0]
+        if os.path.isfile(file_path) and file_n.isdigit():
+            numbers.append(int(file_n))
 
     if numbers:
         highest_number = max(numbers)
@@ -67,7 +68,7 @@ class DQNAgent(Agent):
         self.eps_dec = eps_dec
         self.eps_end = eps_end
 
-        self.start_episode = get_highest_number(pretrained_model_path)
+        self.start_episode = get_highest_number(pretrained_model_path) + 1
         print('biggest num : ', self.start_episode)
 
         # Use GPU if available
@@ -212,6 +213,7 @@ class DQNAgent(Agent):
 
         print('train_start')
         for episode_idx in range(self.start_episode, self.start_episode + num_episode):
+            print("+++++++++++++++++++++++++++++", episode_idx)
             done = False
 
             # Reset environment and preprocess state
