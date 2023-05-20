@@ -5,3 +5,4 @@ __pycache__
 *.txt
 /test/maps/
 runs
+__pycache__
