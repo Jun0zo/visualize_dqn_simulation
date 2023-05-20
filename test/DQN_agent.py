@@ -115,12 +115,12 @@ class DQNAgent(Agent):
     # Returns the greedy action according to the policy net
     def greedy_action(self, history, save_maps):
         history = torch.tensor(history).float().to(self.device) # torch([256, 256])
-        print(torch.sum(history[0]))
         # history = history.squeeze(0)  # torch([1, 256, 256])
         res = self.policy_net(history)
-        print('res :', res)
         if save_maps:
+            os.makedirs('./maps', exist_ok=True)
             num_files = len(os.listdir('./maps'))
+            
             self.policy_net.forward_and_save(history, self.writer)
         action = res.argmax().item() % 3
         return action
@@ -226,10 +226,10 @@ class DQNAgent(Agent):
             
             while not done:
                 # Take epsilon greedy action
-                if global_cnt % 10000 == 0:
-                    # print('=========save===========')
-                    # action = self.choose_action(history, save_maps=True)
-                    action = self.choose_action(history)
+                if global_cnt > 0 and global_cnt % 10000 == 0:
+                    print('=========save===========')
+                    action = self.choose_action(history, save_maps=True)
+                    # action = self.choose_action(history)
                 else:
                     action = self.choose_action(history)
                 
@@ -280,29 +280,16 @@ class DQNAgent(Agent):
             
 
         self.writer.close()
-            
-
-    def getRandomAction(self):
-        # keys = ["W", "A", "S", "D", "B"]
-        keys = [0, 1, 2, 3, 4, 5]
-        probabilities = [0.05, 0.27, 0.1, 0.27, 0.25, 0.1]
-        return random.choices(keys, probabilities, k=1)[0]
-
-    def getAction(self):
-        pass
-
-    
-
     
 
 if __name__ == '__main__':
     env = Environment()
     agent = DQNAgent(env,
                      state_space=(1, 256, 256), 
-                     action_space=3,
+                     action_space=6,
                      tensor_board_path='',
-                     pretrained_model_path='./models_/new_curve_mid2/', 
-                     save_model_path='./models_/new_curve_mid2/')
+                     pretrained_model_path='./models_/new_curve_mid/', 
+                     save_model_path='./models_/new_curve_mid/')
     
     agent.train(num_episode=1000)
     

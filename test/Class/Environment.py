@@ -16,7 +16,7 @@ class Environment:
         self.server = Server()
         self._connect_listen()
         self.action_dict = {0: 'H', 1: 'W', 2: 'S', 3: 'A', 4: 'D', 5: 'B'}
-        self.action_dict = {0: 'H', 1: 'A', 2: 'D'}
+        # self.action_dict = {0: 'H', 1: 'A', 2: 'D'}
 
         self.image_mem = None
 
