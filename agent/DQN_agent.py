@@ -21,6 +21,7 @@ class Agent:
         self.tensor_board_path = os.path.join(results_path, 'tensor_board')
         self.models_path = os.path.join(results_path, 'models')
         self.traces_path = os.path.join(results_path, 'traces')
+        self.maps_path = os.path.join(results_path, 'maps')
         self.save_model_path='models'
     
         self.results_path = results_path
@@ -187,7 +188,7 @@ class DQNAgent(Agent):
             loss.backward()
             self.optim.step()
 
-            self.writer.add_scalar('Loss', loss.item(), i)
+            self.writer.add_scalar('Loss', loss.item())
 
 
             # Increment learn_counter (for dec_eps and replace_target_net)
@@ -205,13 +206,13 @@ class DQNAgent(Agent):
     def train(self, num_episode=1000):
         scores = []
         history = []
-        global_cnt = 0
         learn_cnt = 0
 
         print('train_start')
         for episode_idx in range(self.start_episode, self.start_episode + num_episode):
-            print("+++++++++++++++++++++++++++++", episode_idx)
             done = False
+            score = 0
+            cnt = 0
 
             # Reset environment and preprocess state
             _, _, _, obs = self.env.step(1)
@@ -219,16 +220,11 @@ class DQNAgent(Agent):
             history = np.stack((state, state, state, state), axis=0)
             history = np.reshape([history], (4, 1, 256, 256))
             
-            score = 0
-            cnt = 0
-            
             
             while not done:
-                # Take epsilon greedy action
-                if global_cnt >= 0 and global_cnt % 10 == 0:
-                    print('=========save===========')
-                    action = self.choose_action(history, save_maps=True)
-                    # action = self.choose_action(history)
+                if cnt == 0:
+                    pass
+                    # self.policy_net.save_maps_as_images(os.path.join(self.maps_path, str(episode_idx)))
                 else:
                     action = self.choose_action(history)
                 
@@ -245,12 +241,8 @@ class DQNAgent(Agent):
 
                 score += reward
                 cnt += 1
-                global_cnt += 1
 
                 history = next_history
-                
-                if len(self.memory) % 1000 == 0:
-                    print('cnt :', cnt)
 
 
                 if len(self.memory) % self.train_cnt == 0:
@@ -263,18 +255,15 @@ class DQNAgent(Agent):
                 print('done true ======= ')
                 print(len(self.memory))
 
-            if cnt < 5:
-                print('==============')
-                continue
-
             # scores.append(score)
             print('Sum of Reward', score)
             print('Mean of Reward', score / cnt)
             self.writer.add_scalar("Sum of Reward", score, episode_idx)
             self.writer.add_scalar("Mean of Reward", score / cnt, episode_idx)
             print(f'Episode {episode_idx}/{num_episode}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
-            self.policy_net.save_model()
-            self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
+            if episode_idx % 100 == 0:
+                self.policy_net.save_model(file_idx=episode_idx)
+                self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
             done = False
             
 
