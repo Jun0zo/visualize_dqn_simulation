@@ -6,3 +6,4 @@ __pycache__
 /test/maps/
 runs
 __pycache__
+tensor_board/

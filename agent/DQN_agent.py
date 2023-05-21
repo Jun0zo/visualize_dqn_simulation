@@ -1,52 +1,49 @@
+import os
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 import random
 import numpy as np
-import math
 from tqdm import tqdm
 from collections import deque
-from Class.Environment import TestEnvironment, Environment
-from Class.ReplayBuffer import ReplayBuffer
-from Class.transforms import Transforms
+from Class.Environment import Environment
 from Class.DQN_model import DQN
-import os
-import matplotlib.pyplot as plt
+from utils import get_highest_number
 
-def get_highest_number(folder_path):
-    files = os.listdir(folder_path)
-    numbers = []
 
-    for file_name in files:
-        file_path = os.path.join(folder_path, file_name)
-        file_n = file_name.split('.')[0]
-        if os.path.isfile(file_path) and file_n.isdigit():
-            numbers.append(int(file_n))
-
-    if numbers:
-        highest_number = max(numbers)
-        return highest_number
-    else:
-        return 0
 
 class Agent:
-    def __init__(self, state_space=(256, 256, 3, 4), action_space=6):
+    def __init__(self, state_space=(256, 256, 3, 4), action_space=6, results_path='./results',):
         # 상태와 행동의 크기 정의
         self.state_space = state_space
         self.action_space = action_space
         self.EPISODES = 10
+
+        self.tensor_board_path = os.path.join(results_path, 'tensor_board')
+        self.models_path = os.path.join(results_path, 'models')
+        self.traces_path = os.path.join(results_path, 'traces')
+        self.save_model_path='models'
+    
+        self.results_path = results_path
+
+        self.init_folders()
+
+    def init_folders(self):
+        os.makedirs(self.results_path, exist_ok=True)
+        os.makedirs(self.models_path, exist_ok=True)
+        os.makedirs(self.traces_path, exist_ok=True)
+
+    def get_episode_start_cnt(self):
+        return get_highest_number(self.models_path) + 1
+
+
         
 
 class DQNAgent(Agent):
     def __init__(self, 
                 env, 
                 state_space, 
-                action_space, 
-                tensor_board_path='',
-                pretrained_model_path='./models', 
-                save_model_path='./models', 
+                action_space,
+                results_path='./results',
                 train_cnt=100, 
                 replace_target_cnt=30, 
                 gamma=0.99, 
@@ -56,7 +53,7 @@ class DQNAgent(Agent):
                 batch_size=32, 
                 lr=0.001
                 ):
-        super().__init__(state_space, action_space)
+        super().__init__(state_space, action_space, results_path)
         self.env = env
         
         # Set global variables
@@ -68,7 +65,7 @@ class DQNAgent(Agent):
         self.eps_dec = eps_dec
         self.eps_end = eps_end
 
-        self.start_episode = get_highest_number(pretrained_model_path) + 1
+        self.start_episode = self.get_episode_start_cnt()
         print('biggest num : ', self.start_episode)
 
         # Use GPU if available
@@ -84,12 +81,12 @@ class DQNAgent(Agent):
         self.learn_counter = 0
 
         # Initialise policy and target networks, set target network to eval mode
-        self.policy_net = DQN(self.state_space, self.action_space, filename='test', pretrained_model_path=pretrained_model_path, save_model_path=save_model_path).to(self.device)
-        self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target').to(self.device)
+        self.policy_net = DQN(self.state_space, self.action_space, filename='test', model_path=self.models_path).to(self.device)
+        self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target', model_path='').to(self.device)
         self.target_net.eval()
 
-        if tensor_board_path:
-            self.writer = SummaryWriter(tensor_board_path)
+        if self.tensor_board_path:
+            self.writer = SummaryWriter(self.tensor_board_path)
         else:
             self.writer = SummaryWriter()
 
@@ -228,7 +225,7 @@ class DQNAgent(Agent):
             
             while not done:
                 # Take epsilon greedy action
-                if global_cnt > 0 and global_cnt % 10000 == 0:
+                if global_cnt >= 0 and global_cnt % 10 == 0:
                     print('=========save===========')
                     action = self.choose_action(history, save_maps=True)
                     # action = self.choose_action(history)
@@ -277,7 +274,7 @@ class DQNAgent(Agent):
             self.writer.add_scalar("Mean of Reward", score / cnt, episode_idx)
             print(f'Episode {episode_idx}/{num_episode}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
             self.policy_net.save_model()
-            self.env.save_trace(f'./traces/eps{episode_idx}-trace.txt')
+            self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
             done = False
             
 
@@ -289,9 +286,7 @@ if __name__ == '__main__':
     agent = DQNAgent(env,
                      state_space=(1, 256, 256), 
                      action_space=6,
-                     tensor_board_path='',
-                     pretrained_model_path='./models_/new_curve_mid/', 
-                     save_model_path='./models_/new_curve_mid/')
+                     results_path='.\\results\\a')
     
     agent.train(num_episode=1000)
     

@@ -3,16 +3,15 @@ import torch.nn as nn
 import numpy as np
 from .Additional_model import BottleneckAttentionModule
 import os
-from PIL import Image
+from utils import get_highest_number
 import matplotlib.pyplot as plt
 
 # This class defines the DQN network structure
 class DQN(nn.Module):
-    def __init__(self, input_dim, output_dim, filename, pretrained_model_path='./models', save_model_path='./models'):
+    def __init__(self, input_dim, output_dim, filename, model_path):
         super(DQN, self).__init__()
 
-        self.pretrained_model_path = pretrained_model_path
-        self.save_model_path = save_model_path
+        self.model_path = model_path
 
         self.input_dim = input_dim
         channels, _, _ = input_dim
@@ -152,20 +151,21 @@ class DQN(nn.Module):
 
 
     # Save a model
-    def save_model(self, is_idx=True):
-        if is_idx:
-            num_files = len(os.listdir(self.save_model_path))
-            torch.save(self.state_dict(), os.path.join(self.save_model_path, f'{num_files + 1}.pth'))
+    def save_model(self, file_idx=0):
+        if not file_idx:
+            file_nubmer = get_highest_number(self.model_path) + 1
+            torch.save(self.state_dict(), os.path.join(self.model_path, f'{file_nubmer}.pth'))
         else:
-            torch.save(self.state_dict(), os.path.join(self.save_model_path, f'{self.filename}.pth'))
+            torch.save(self.state_dict(), os.path.join(self.model_path, f'{file_idx}.pth'))
+        print(f"model loaded! : f'{file_nubmer}.pth")
 
 
     # Loads a model
-    def load_model(self, is_idx=True):
-        if is_idx:
-            num_files = len(os.listdir(self.pretrained_model_path))
-            model_path = os.path.join(self.pretrained_model_path, f'{num_files}.pth')
+    def load_model(self, file_idx=0):
+        if not file_idx:
+            file_nubmer = get_highest_number(self.model_path)
+            model_path = os.path.join(self.model_path, f'{file_nubmer}.pth')
         else:
-            model_path = os.path.join(self.pretrained_model_path, f'{self.filename}.pth')
+            model_path = os.path.join(self.model_path, f'{file_idx}.pth')
         self.load_state_dict(torch.load(model_path))
         print(f'model loaded! : {model_path}')

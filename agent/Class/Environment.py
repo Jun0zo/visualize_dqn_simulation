@@ -48,12 +48,7 @@ class Environment:
             # self.server.conn.recv(self.server.BUFFER_SIZE)/
         
         self.server.conn.send(next_action.encode())
-        self.save_image(image)
         
-        # print(is_done)
-        # print(is_done, reward, current_position, len(data), "next :", next_action)
-        # if reward % 1 != 0:
-        #     is_done = False
         self.trace.append(current_position)
         return is_done, reward, current_position, image
 
