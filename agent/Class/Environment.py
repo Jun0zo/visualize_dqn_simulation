@@ -39,7 +39,7 @@ class Environment:
             rgba_image = Image.open(io.BytesIO(data[13:]))
             
             gray_image = rgba_image.convert('RGB').convert('L')
-            image = np.asarray(gray_image)
+            image = np.asarray(gray_image) / 255.0
             
             self.image_mem = image
         except Exception as e:

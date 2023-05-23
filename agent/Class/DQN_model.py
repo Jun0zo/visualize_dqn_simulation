@@ -69,7 +69,6 @@ class DQN(nn.Module):
         x = self.l1(x)
         x = x.view(x.size(0), -1)
         x = self.l2(x)
-        print(x)
         return x
     
     def capture_feature_maps(self, module, input, output):
@@ -100,9 +99,11 @@ class DQN(nn.Module):
         if not file_idx:
             file_nubmer = get_highest_number(self.model_path) + 1
             torch.save(self.state_dict(), os.path.join(self.model_path, f'{file_nubmer}.pth'))
+            print(f"model saved! : f'{file_nubmer}.pth")
         else:
             torch.save(self.state_dict(), os.path.join(self.model_path, f'{file_idx}.pth'))
-        print(f"model loaded! : f'{file_nubmer}.pth")
+            print(f"model saved! : f'{file_idx}.pth")
+        
 
 
     # Loads a model

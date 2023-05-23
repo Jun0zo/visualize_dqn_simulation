@@ -45,10 +45,10 @@ class DQNAgent(Agent):
                 state_space, 
                 action_space,
                 results_path='./results',
-                train_cnt=100, 
-                replace_target_cnt=30, 
+                train_cnt=500, 
+                replace_target_cnt=100, 
                 gamma=0.99, 
-                eps_strt=0.5, 
+                eps_strt=0.2, 
                 eps_end=0.001, 
                 eps_dec=5e-6, 
                 batch_size=32, 
@@ -107,27 +107,24 @@ class DQNAgent(Agent):
 
     # Updates the target net to have same weights as policy net
     def replace_target_net(self):
+        print("!!!!!!!!!!!!!!!!", self.learn_counter, self.replace_target_cnt)
         if self.learn_counter % self.replace_target_cnt == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
             print('Target network replaced')
 
     # Returns the greedy action according to the policy net
-    def greedy_action(self, history, save_maps):
+    def greedy_action(self, history):
         history = torch.tensor(history).float().to(self.device) # torch([256, 256])
         # history = history.squeeze(0)  # torch([1, 256, 256])
         res = self.policy_net(history)
-        if save_maps:
-            os.makedirs('./maps', exist_ok=True)
-            num_files = len(os.listdir('./maps'))
-            
-            self.policy_net.forward_and_save(history, self.writer)
-        action = res.argmax().item() % 3
+        
+        action = res.argmax().item() % self.action_space
         return action
 
     # Returns an action based on epsilon greedy method
-    def choose_action(self, history, save_maps=False):
+    def choose_action(self, history):
         if random.random() > self.eps:
-            action = self.greedy_action(history, save_maps)
+            action = self.greedy_action(history)
             
         else:
             action = random.choice([x for x in range(self.action_space)])
@@ -191,11 +188,11 @@ class DQNAgent(Agent):
             self.writer.add_scalar('Loss', loss.item())
 
 
-            # Increment learn_counter (for dec_eps and replace_target_net)
-            self.learn_counter += 1
+        # Increment learn_counter (for dec_eps and replace_target_net)
+        self.learn_counter += 1
 
-            # Check replace target net
-            self.replace_target_net()
+        # Check replace target net
+        self.replace_target_net()
 
         # Save model & decrement epsilon
         self.dec_eps()
@@ -206,7 +203,6 @@ class DQNAgent(Agent):
     def train(self, num_episode=1000):
         scores = []
         history = []
-        learn_cnt = 0
 
         print('train_start')
         for episode_idx in range(self.start_episode, self.start_episode + num_episode):
@@ -223,7 +219,7 @@ class DQNAgent(Agent):
             
             while not done:
                 if cnt == 0:
-                    pass
+                    action = self.choose_action(history)
                     # self.policy_net.save_maps_as_images(os.path.join(self.maps_path, str(episode_idx)))
                 else:
                     action = self.choose_action(history)
@@ -245,11 +241,10 @@ class DQNAgent(Agent):
                 history = next_history
 
 
-                if len(self.memory) % self.train_cnt == 0:
+                if len(self.memory) > self.train_cnt:
                     # Train on as many transitions as there have been added in the episode
                     print(f'Learning at {episode_idx}, {len(self.memory)}, score : {score}')
                     self.learn()
-                    learn_cnt += 1
 
             if done == True:
                 print('done true ======= ')
@@ -275,7 +270,7 @@ if __name__ == '__main__':
     agent = DQNAgent(env,
                      state_space=(1, 256, 256), 
                      action_space=6,
-                     results_path='.\\results\\a')
+                     results_path='.\\results\\norm_test')
     
-    agent.train(num_episode=1000)
+    agent.train(num_episode=100000)
     
