@@ -1,16 +1,18 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from .Additional_model import BottleneckAttentionModule
 import os
-from utils import get_highest_number
+from .Additional_model import BottleneckAttentionModule
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
+from ..utils import get_highest_number
+
 
 # This class defines the DQN network structure
 class DQN(nn.Module):
     def __init__(self, input_dim, output_dim, filename, model_path):
         super(DQN, self).__init__()
+
 
         self.model_path = model_path
 
@@ -21,10 +23,10 @@ class DQN(nn.Module):
         self.l1 = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=8, stride=4, padding=2),
             nn.ReLU(),
-            BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
+            # BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
             nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
+            # BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
         )
@@ -43,13 +45,13 @@ class DQN(nn.Module):
         self.feature_maps = None    # List to store feature maps
         self.attention_maps = None    # List to store attention maps
 
-        self.l1[0].register_forward_hook(self.capture_feature_maps)
+        '''self.l1[0].register_forward_hook(self.capture_feature_maps)
         self.l1[2].channel_attention.register_forward_hook(self.capture_attention_maps)
         self.l1[2].spatial_attention.register_forward_hook(self.capture_attention_maps)
         self.l1[3].register_forward_hook(self.capture_feature_maps)
         self.l1[5].channel_attention.register_forward_hook(self.capture_attention_maps)
         self.l1[5].spatial_attention.register_forward_hook(self.capture_attention_maps)
-        self.l1[6].register_forward_hook(self.capture_feature_maps)
+        self.l1[6].register_forward_hook(self.capture_feature_maps)'''
 
 
         # Save filename for saving model
@@ -65,7 +67,7 @@ class DQN(nn.Module):
     def forward(self, x):
         self.feature_maps = []  # Clear feature_maps list for each forward pass
         self.attention_maps = []  # Clear attention_maps list for each forward pass
-        
+        x = x.to('cuda:0')
         x = self.l1(x)
         x = x.view(x.size(0), -1)
         x = self.l2(x)

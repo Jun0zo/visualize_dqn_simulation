@@ -39,6 +39,7 @@ class Environment:
             rgba_image = Image.open(io.BytesIO(data[13:]))
             
             gray_image = rgba_image.convert('RGB').convert('L')
+            # gray_image.save('./test.jpg')
             image = np.asarray(gray_image) / 255.0
             
             self.image_mem = image

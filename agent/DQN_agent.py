@@ -1,13 +1,14 @@
 import os
 import torch
+import json
 from torch.utils.tensorboard import SummaryWriter
 import random
 import numpy as np
 from tqdm import tqdm
 from collections import deque
-from Class.Environment import Environment
-from Class.DQN_model import DQN
-from utils import get_highest_number
+from .Class.Environment import Environment
+from .Class.DQN_model import DQN
+from .utils import get_highest_number
 
 
 
@@ -48,8 +49,8 @@ class DQNAgent(Agent):
                 train_cnt=500, 
                 replace_target_cnt=100, 
                 gamma=0.99, 
-                eps_strt=0.2, 
-                eps_end=0.001, 
+                eps_strt=1.0, 
+                eps_end=0.05, 
                 eps_dec=5e-6, 
                 batch_size=32, 
                 lr=0.001
@@ -65,6 +66,8 @@ class DQNAgent(Agent):
         self.eps = eps_strt
         self.eps_dec = eps_dec
         self.eps_end = eps_end
+
+        self.episode_idx_mem = -1
 
         self.start_episode = self.get_episode_start_cnt()
         print('biggest num : ', self.start_episode)
@@ -82,6 +85,7 @@ class DQNAgent(Agent):
         self.learn_counter = 0
 
         # Initialise policy and target networks, set target network to eval mode
+        print('device :', self.device)
         self.policy_net = DQN(self.state_space, self.action_space, filename='test', model_path=self.models_path).to(self.device)
         self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target', model_path='').to(self.device)
         self.target_net.eval()
@@ -91,12 +95,14 @@ class DQNAgent(Agent):
         else:
             self.writer = SummaryWriter()
 
+        self.loss_writer_cnt = 0
+
         # If pretrained model of the modelname already exists, load it
         try:
             self.policy_net.load_model()
             print('loaded pretrained model')
         except Exception as e:
-            print('err : ', e)
+            print('loading model failed : ', e)
         
         # Set target net to be the same as policy net
         self.replace_target_net()
@@ -104,6 +110,22 @@ class DQNAgent(Agent):
         # Set optimizer & loss function
         self.optim = torch.optim.Adam(self.policy_net.parameters(), lr=self.LR)
         self.loss = torch.nn.SmoothL1Loss()
+
+        try:
+            with open(os.path.join(self.results_path, 'info.json'), 'r') as json_file:
+                data = json.load(json_file)
+                self.eps = data['eps']
+                print('loaded epsilon value', self.eps)
+        except Exception as e:
+            print('loading epsilon vale file failed : ', e)
+
+    def __del__(self):
+        print("traces :", self.traces_path)
+        with open(os.path.join(self.results_path, 'info.json'), 'w') as json_file:
+            json.dump({"eps":self.eps}, json_file)
+
+        self.policy_net.save_model(file_idx=self.episode_idx_mem)
+        self.env.save_trace(os.path.join(self.traces_path, f"{self.episode_idx_mem}.txt"))
 
     # Updates the target net to have same weights as policy net
     def replace_target_net(self):
@@ -117,7 +139,7 @@ class DQNAgent(Agent):
         history = torch.tensor(history).float().to(self.device) # torch([256, 256])
         # history = history.squeeze(0)  # torch([1, 256, 256])
         res = self.policy_net(history)
-        
+
         action = res.argmax().item() % self.action_space
         return action
 
@@ -158,10 +180,11 @@ class DQNAgent(Agent):
             reward.append(reward_)
             done.append(done_)
 
-        return history, torch.tensor(action), torch.tensor(reward), next_history, torch.tensor(done)
+        return torch.tensor(history).to(self.device), torch.tensor(action).to(self.device), torch.tensor(reward).to(self.device), next_history, torch.tensor(done).to(self.device)
 
     # Samples a single batch according to batchsize and updates the policy net
     def learn(self, num_iters=3):
+        total_loss = 0
         for i in tqdm(range(num_iters)):
 
             # Sample batch
@@ -185,10 +208,13 @@ class DQNAgent(Agent):
             loss.backward()
             self.optim.step()
 
-            self.writer.add_scalar('Loss', loss.item())
+            total_loss += loss.item()
 
-
+        mean_loss = total_loss / num_iters
+        # self.writer.add_scalar('Loss', mean_loss, self.loss_writer_cnt)
+            
         # Increment learn_counter (for dec_eps and replace_target_net)
+        self.loss_writer_cnt += 1
         self.learn_counter += 1
 
         # Check replace target net
@@ -199,13 +225,15 @@ class DQNAgent(Agent):
 
         self.writer.flush()
 
+        return mean_loss
+
     # Plays num_eps amount of games, while optimizing the model after each episode
     def train(self, num_episode=1000):
-        scores = []
         history = []
 
         print('train_start')
         for episode_idx in range(self.start_episode, self.start_episode + num_episode):
+            self.episode_idx_mem = episode_idx
             done = False
             score = 0
             cnt = 0
@@ -214,9 +242,9 @@ class DQNAgent(Agent):
             _, _, _, obs = self.env.step(1)
             state = obs
             history = np.stack((state, state, state, state), axis=0)
-            history = np.reshape([history], (4, 1, 256, 256))
+            history = np.reshape([history], (4, 1, 84, 84))
             
-            
+            episode_total_loss = 0
             while not done:
                 if cnt == 0:
                     action = self.choose_action(history)
@@ -230,7 +258,7 @@ class DQNAgent(Agent):
                 
                 print(done, reward, current_position, 'action : ', action)
                 next_state = observe
-                next_state = np.reshape([next_state], (1, 1, 256, 256))
+                next_state = np.reshape([next_state], (1, 1, 84, 84))
                 next_history = np.append(next_state, history[:3,:, :, :], axis=0)
                 
                 self.append_sample(history, action, reward, next_history, int(done))
@@ -244,11 +272,12 @@ class DQNAgent(Agent):
                 if len(self.memory) > self.train_cnt:
                     # Train on as many transitions as there have been added in the episode
                     print(f'Learning at {episode_idx}, {len(self.memory)}, score : {score}')
-                    self.learn()
+                    episode_total_loss += self.learn(len(self.memory) // self.batch_size)
 
             if done == True:
                 print('done true ======= ')
                 print(len(self.memory))
+                self.writer.add_scalar('Loss', episode_total_loss / cnt, episode_idx)
 
             # scores.append(score)
             print('Sum of Reward', score)
@@ -270,7 +299,7 @@ if __name__ == '__main__':
     agent = DQNAgent(env,
                      state_space=(1, 256, 256), 
                      action_space=6,
-                     results_path='.\\results\\norm_test')
+                     results_path='.\\results\\run_1')
     
     agent.train(num_episode=100000)
     
