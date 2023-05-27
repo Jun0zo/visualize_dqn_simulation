@@ -17,7 +17,6 @@ class Agent:
         # 상태와 행동의 크기 정의
         self.state_space = state_space
         self.action_space = action_space
-        self.EPISODES = 10
 
         self.tensor_board_path = os.path.join(results_path, 'tensor_board')
         self.models_path = os.path.join(results_path, 'models')
@@ -48,15 +47,15 @@ class DQNAgent(Agent):
                 results_path='./results',
                 train_cnt=500, 
                 replace_target_cnt=100, 
-                gamma=0.99, 
-                eps_strt=1.0, 
+                gamma=0.99,
+                eps_strt=0.5, 
                 eps_end=0.05, 
-                eps_dec=5e-6, 
+                eps_dec=5e-6,
                 batch_size=32, 
-                lr=0.001
+                lr=0.001,
+                train_mode=True
                 ):
         super().__init__(state_space, action_space, results_path)
-        self.env = env
         
         # Set global variables
         self.env = env
@@ -66,6 +65,11 @@ class DQNAgent(Agent):
         self.eps = eps_strt
         self.eps_dec = eps_dec
         self.eps_end = eps_end
+        self.train_mode = train_mode
+
+        if not self.train_mode:
+            
+            self.eps = 0
 
         self.episode_idx_mem = -1
 
@@ -99,7 +103,7 @@ class DQNAgent(Agent):
 
         # If pretrained model of the modelname already exists, load it
         try:
-            self.policy_net.load_model()
+            self.policy_net.load_model(file_idx=self.start_episode - 1)
             print('loaded pretrained model')
         except Exception as e:
             print('loading model failed : ', e)
@@ -119,13 +123,14 @@ class DQNAgent(Agent):
         except Exception as e:
             print('loading epsilon vale file failed : ', e)
 
-    def __del__(self):
-        print("traces :", self.traces_path)
-        with open(os.path.join(self.results_path, 'info.json'), 'w') as json_file:
-            json.dump({"eps":self.eps}, json_file)
+    def save_last(self):
+        if  self.train_mode:
+            print("traces :", self.traces_path)
+            with open(os.path.join(self.results_path, 'info.json'), 'w') as json_file:
+                json.dump({"eps":self.eps}, json_file)
 
-        self.policy_net.save_model(file_idx=self.episode_idx_mem)
-        self.env.save_trace(os.path.join(self.traces_path, f"{self.episode_idx_mem}.txt"))
+            self.policy_net.save_model(file_idx=self.episode_idx_mem)
+            self.env.save_trace(os.path.join(self.traces_path, f"{self.episode_idx_mem}.txt"))
 
     # Updates the target net to have same weights as policy net
     def replace_target_net(self):
@@ -139,13 +144,12 @@ class DQNAgent(Agent):
         history = torch.tensor(history).float().to(self.device) # torch([256, 256])
         # history = history.squeeze(0)  # torch([1, 256, 256])
         res = self.policy_net(history)
-
         action = res.argmax().item() % self.action_space
         return action
 
     # Returns an action based on epsilon greedy method
     def choose_action(self, history):
-        if random.random() > self.eps:
+        if not self.train_mode or random.random() > self.eps:
             action = self.greedy_action(history)
             
         else:
@@ -222,7 +226,6 @@ class DQNAgent(Agent):
 
         # Save model & decrement epsilon
         self.dec_eps()
-
         self.writer.flush()
 
         return mean_loss
@@ -232,67 +235,99 @@ class DQNAgent(Agent):
         history = []
 
         print('train_start')
-        for episode_idx in range(self.start_episode, self.start_episode + num_episode):
-            self.episode_idx_mem = episode_idx
-            done = False
-            score = 0
-            cnt = 0
 
-            # Reset environment and preprocess state
-            _, _, _, obs = self.env.step(1)
-            state = obs
-            history = np.stack((state, state, state, state), axis=0)
-            history = np.reshape([history], (4, 1, 84, 84))
-            
-            episode_total_loss = 0
-            while not done:
-                if cnt == 0:
-                    action = self.choose_action(history)
-                    # self.policy_net.save_maps_as_images(os.path.join(self.maps_path, str(episode_idx)))
-                else:
-                    action = self.choose_action(history)
+        try:
+            for episode_idx in range(self.start_episode, self.start_episode + num_episode):
+                self.episode_idx_mem = episode_idx
+                done = False
+                score = 0
+                cnt = 0
+
+                # Reset environment and preprocess state
+                _, _, _, obs = self.env.step(1)
+                state = obs
+                history = np.stack((state, state, state, state), axis=0)
+                history = np.reshape([history], (4, 1, 84, 84))
                 
-                done, reward, current_position, observe = self.env.step(action)
+                episode_total_loss = 0
+                while not done:
+                    if cnt == 0:
+                        action = self.choose_action(history)
+                        # self.policy_net.save_maps_as_images(os.path.join(self.maps_path, str(episode_idx)))
+                    else:
+                        action = self.choose_action(history)
+                    
+                    done, reward, current_position, observe = self.env.step(action)
 
-                # self.writer.add_scalars(f'car/{episode_idx}/position', {'x': current_position[0], 'y': current_position[1]}, global_step=episode_idx)
-                
-                print(done, reward, current_position, 'action : ', action)
-                next_state = observe
-                next_state = np.reshape([next_state], (1, 1, 84, 84))
-                next_history = np.append(next_state, history[:3,:, :, :], axis=0)
-                
-                self.append_sample(history, action, reward, next_history, int(done))
+                    # self.writer.add_scalars(f'car/{episode_idx}/position', {'x': current_position[0], 'y': current_position[1]}, global_step=episode_idx)
+                    
+                    print(done, reward, current_position, 'action : ', action)
+                    next_state = observe
+                    next_state = np.reshape([next_state], (1, 1, 84, 84))
+                    next_history = np.append(next_state, history[:3,:, :, :], axis=0)
+                    
+                    self.append_sample(history, action, reward, next_history, int(done))
 
-                score += reward
-                cnt += 1
+                    score += reward
+                    cnt += 1
 
-                history = next_history
+                    history = next_history
 
 
-                if len(self.memory) > self.train_cnt:
-                    # Train on as many transitions as there have been added in the episode
-                    print(f'Learning at {episode_idx}, {len(self.memory)}, score : {score}')
-                    episode_total_loss += self.learn(len(self.memory) // self.batch_size)
+                    if len(self.memory) > self.train_cnt:
+                        # Train on as many transitions as there have been added in the episode
+                        print(f'Learning at {episode_idx}, {len(self.memory)}, score : {score}')
+                        episode_total_loss += self.learn(len(self.memory) // self.batch_size)
+                        # episode_total_loss += self.learn(10)
 
-            if done == True:
-                print('done true ======= ')
-                print(len(self.memory))
-                self.writer.add_scalar('Loss', episode_total_loss / cnt, episode_idx)
+                if done == True:
+                    print('done true ======= ')
+                    print(len(self.memory))
+                    self.writer.add_scalar('Loss', episode_total_loss / cnt, episode_idx)
 
-            # scores.append(score)
-            print('Sum of Reward', score)
-            print('Mean of Reward', score / cnt)
-            self.writer.add_scalar("Sum of Reward", score, episode_idx)
-            self.writer.add_scalar("Mean of Reward", score / cnt, episode_idx)
-            print(f'Episode {episode_idx}/{num_episode}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
-            if episode_idx % 100 == 0:
-                self.policy_net.save_model(file_idx=episode_idx)
-                self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
-            done = False
+                    print('Sum of Reward', score)
+                    print('Mean of Reward', score / cnt)
+                    self.writer.add_scalar("Sum of Reward", score, episode_idx)
+                    self.writer.add_scalar("Mean of Reward", score / cnt, episode_idx)
+                    self.writer.add_scalar("Epsilon", self.eps, episode_idx)
+                    print(f'Episode {episode_idx}/{num_episode}: \n\tScore: {score}\n\t \n\tEpsilon: {self.eps}')
+
+
+                if episode_idx % 10 == 0:
+                    self.policy_net.save_model(file_idx=episode_idx)
+                    self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
+                done = False
+
+        except KeyboardInterrupt:
+            self.save_last()
+            print("Training interrupted. Model saved.")
             
 
         self.writer.close()
-    
+
+    def play(self):
+        # Reset environment and preprocess state
+        _, _, _, obs = self.env.step(1)
+        state = obs
+        history = np.stack((state, state, state, state), axis=0)
+        history = np.reshape([history], (4, 1, 84, 84))
+        
+        while True:
+            action = self.choose_action(history)
+            
+            done, reward, current_position, observe = self.env.step(action)
+
+            # self.writer.add_scalars(f'car/{episode_idx}/position', {'x': current_position[0], 'y': current_position[1]}, global_step=episode_idx)
+            
+            print(done, reward, current_position, 'action : ', action)
+            next_state = observe
+            next_state = np.reshape([next_state], (1, 1, 84, 84))
+            next_history = np.append(next_state, history[:3,:, :, :], axis=0)
+            
+            self.append_sample(history, action, reward, next_history, int(done))
+
+            history = next_history
+
 
 if __name__ == '__main__':
     env = Environment()

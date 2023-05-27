@@ -103,6 +103,7 @@ class DQN(nn.Module):
             torch.save(self.state_dict(), os.path.join(self.model_path, f'{file_nubmer}.pth'))
             print(f"model saved! : f'{file_nubmer}.pth")
         else:
+            
             torch.save(self.state_dict(), os.path.join(self.model_path, f'{file_idx}.pth'))
             print(f"model saved! : f'{file_idx}.pth")
         
@@ -110,10 +111,12 @@ class DQN(nn.Module):
 
     # Loads a model
     def load_model(self, file_idx=0):
+        print("load model!!")
         if not file_idx:
             file_nubmer = get_highest_number(self.model_path)
             model_path = os.path.join(self.model_path, f'{file_nubmer}.pth')
         else:
             model_path = os.path.join(self.model_path, f'{file_idx}.pth')
+        
         self.load_state_dict(torch.load(model_path))
         print(f'model loaded! : {model_path}')
