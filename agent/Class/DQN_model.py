@@ -23,10 +23,10 @@ class DQN(nn.Module):
         self.l1 = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=8, stride=4, padding=2),
             nn.ReLU(),
-            # BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
+            BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
             nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            # BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
+            BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
         )

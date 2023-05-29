@@ -46,7 +46,7 @@ class DQNAgent(Agent):
                 action_space,
                 results_path='./results',
                 train_cnt=500, 
-                replace_target_cnt=100, 
+                replace_target_cnt=200, 
                 gamma=0.99,
                 eps_strt=0.5, 
                 eps_end=0.05, 
@@ -284,6 +284,7 @@ class DQNAgent(Agent):
                     print('done true ======= ')
                     print(len(self.memory))
                     self.writer.add_scalar('Loss', episode_total_loss / cnt, episode_idx)
+                    self.writer.add_scalar('Replay-Memory size', len(self.memory), episode_idx)
 
                     print('Sum of Reward', score)
                     print('Mean of Reward', score / cnt)
