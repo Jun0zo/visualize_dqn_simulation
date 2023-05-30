@@ -23,10 +23,10 @@ class DQN(nn.Module):
         self.l1 = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=8, stride=4, padding=2),
             nn.ReLU(),
-            BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
+            # BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
             nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
+            # BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
         )
@@ -42,17 +42,24 @@ class DQN(nn.Module):
             nn.Linear(lin1_output_size, output_dim)
         )
 
-        self.feature_maps = None    # List to store feature maps
-        self.attention_maps = None    # List to store attention maps
+        self.feature_maps = []    # List to store feature maps
+        self.attention_maps = []    # List to store attention maps
+
+        is_bam = False
 
         if is_resiger:
-            self.l1[0].register_forward_hook(self.capture_feature_maps)
-            self.l1[2].channel_attention.register_forward_hook(self.capture_attention_maps)
-            self.l1[2].spatial_attention.register_forward_hook(self.capture_attention_maps)
-            self.l1[3].register_forward_hook(self.capture_feature_maps)
-            self.l1[5].channel_attention.register_forward_hook(self.capture_attention_maps)
-            self.l1[5].spatial_attention.register_forward_hook(self.capture_attention_maps)
-            self.l1[6].register_forward_hook(self.capture_feature_maps)
+            if is_bam:
+                self.l1[0].register_forward_hook(self.capture_feature_maps)
+                self.l1[2].channel_attention.register_forward_hook(self.capture_attention_maps)
+                self.l1[2].spatial_attention.register_forward_hook(self.capture_attention_maps)
+                self.l1[3].register_forward_hook(self.capture_feature_maps)
+                self.l1[5].channel_attention.register_forward_hook(self.capture_attention_maps)
+                self.l1[5].spatial_attention.register_forward_hook(self.capture_attention_maps)
+                self.l1[6].register_forward_hook(self.capture_feature_maps)
+            else:
+                self.l1[0].register_forward_hook(self.capture_feature_maps)
+                self.l1[2].register_forward_hook(self.capture_feature_maps)
+                self.l1[4].register_forward_hook(self.capture_feature_maps)
 
 
         # Save filename for saving model
@@ -66,8 +73,8 @@ class DQN(nn.Module):
 
     # Performs forward pass through the network, returns action values
     def forward(self, x):
-        self.feature_maps = []  # Clear feature_maps list for each forward pass
-        self.attention_maps = []  # Clear attention_maps list for each forward pass
+        # self.feature_maps = []  # Clear feature_maps list for each forward pass
+        # self.attention_maps = []  # Clear attention_maps list for each forward pass
         x = x.to('cuda:0')
         x = self.l1(x)
         x = x.view(x.size(0), -1)
@@ -75,6 +82,7 @@ class DQN(nn.Module):
         return x
     
     def capture_feature_maps(self, module, input, output):
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', len(self.feature_maps))
         self.feature_maps.append(output)
 
     def capture_attention_maps(self, module, input, output):
@@ -84,18 +92,43 @@ class DQN(nn.Module):
         os.makedirs(output_dir, exist_ok=True)
 
         # Save feature maps as images
-        for i, feature_map in enumerate(self.feature_maps):
+        for ii, feature_map in enumerate(self.feature_maps):
             feature_map = feature_map.squeeze(0).detach().cpu()
-            image = TF.to_pil_image(feature_map)
-            image_path = os.path.join(output_dir, f"feature_map_{i}.png")
-            image.save(image_path)
+            if feature_map.is_sparse:
+                feature_map = feature_map.to_dense()
+            if feature_map.dim() == 4:
+                feature_map = feature_map[0]  # Remove the batch dimension
+
+            print(feature_map.shape)
+            
+            num_cols = 8  # Number of columns in the subplot grid
+            num_rows = feature_map.shape[0] // num_cols  # Number of rows in the subplot grid
+
+            # Create a figure and axes for the subplots
+            fig, axes = plt.subplots(num_rows, num_cols)
+        
+            for i in range(num_rows):
+                for j in range(num_cols):
+                    ffeature_map = feature_map[i * num_cols + j]  # Get the corresponding feature map
+                    # Convert the feature map to a PIL image
+                    image = TF.to_pil_image(ffeature_map)
+
+                    # Plot the image in the corresponding subplot
+                    ax = axes[i, j]
+                    ax.imshow(image)
+                    ax.axis('off')
+
+            # Adjust the spacing between subplots
+            plt.subplots_adjust(wspace=0.05, hspace=0.05)
+
+            # Save the figure with subplots as a single image
+            image_path = os.path.join(output_dir, f"combined_image_{ii}.png")
+            plt.savefig(image_path)
+
+            # Close the figure to free up memory
+            plt.close(fig)
 
         # Save attention maps as images
-        for i, attention_map in enumerate(self.attention_maps):
-            attention_map = attention_map.squeeze(0).detach().cpu()
-            image = TF.to_pil_image(attention_map)
-            image_path = os.path.join(output_dir, f"attention_map_{i}.png")
-            image.save(image_path)
 
     # Save a model
     def save_model(self, file_idx=0):

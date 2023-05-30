@@ -45,12 +45,12 @@ class DQNAgent(Agent):
                 state_space, 
                 action_space,
                 results_path='./results',
-                train_cnt=500, 
-                replace_target_cnt=200, 
+                train_cnt=10000, 
+                replace_target_cnt=5000,
                 gamma=0.99,
-                eps_strt=0.5, 
+                eps_strt=0.99, 
                 eps_end=0.05, 
-                eps_dec=5e-6,
+                eps_dec=3e-6,
                 batch_size=32, 
                 lr=0.001,
                 train_mode=True
@@ -257,6 +257,7 @@ class DQNAgent(Agent):
                     else:
                         action = self.choose_action(history)
                     
+                    
                     done, reward, current_position, observe = self.env.step(action)
 
                     # self.writer.add_scalars(f'car/{episode_idx}/position', {'x': current_position[0], 'y': current_position[1]}, global_step=episode_idx)
@@ -315,8 +316,9 @@ class DQNAgent(Agent):
         
         done = False
         
-        while done:
+        while not done:
             action = self.choose_action(history)
+            action = 1
             
             done, reward, current_position, observe = self.env.step(action)
 
