@@ -36,8 +36,6 @@ public class RLAgent : MonoBehaviour
         agentTransform = transform;
         carController = GetComponent<Car_Controller>();
         
-        while (!socketClient.isConnected())
-             Debug.Log("waiting");
         initVar();
         InvokeRepeating("train", 0f, 0.3f);
     }
@@ -83,12 +81,13 @@ public class RLAgent : MonoBehaviour
         // check in or out
 
         if (collisionStateManager.collisionType == 1) 
-            reward += 5f;
+            reward += 10f;
         
         else if (collisionStateManager.collisionType == -1)
-            reward -= 5f;
+            reward -= 10f;
 
         // previousDistcance = currentDistance;
+        collisionStateManager.collisionType = 0;
 
         return reward;
     }
@@ -109,13 +108,30 @@ public class RLAgent : MonoBehaviour
         texture2D.ReadPixels(new Rect(0, 0, RT.width, RT.height), 0, 0);
         texture2D.Apply();
 
-        string Path = Application.persistentDataPath + "/" + FileName + ".png";
-        byte[] Imagebytes = texture2D.EncodeToPNG();
+        // Resize the image to 84x84
+        int targetWidth = 84;
+        int targetHeight = 84;
+        RenderTexture resizedRT = new RenderTexture(targetWidth, targetHeight, 24);
+        Graphics.Blit(texture2D, resizedRT);
 
-        if (Imagebytes.Length > 257*257 + 50000)
-        Debug.Log(Imagebytes.Length);
+        // Create a new Texture2D with the resized dimensions
+        Texture2D resizedTexture = new Texture2D(targetWidth, targetHeight, TextureFormat.RGB24, false);
+        RenderTexture.active = resizedRT;
+        resizedTexture.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
+        resizedTexture.Apply();
 
-        return Imagebytes;
+        // Encode the resized texture to PNG
+        byte[] imageBytes = resizedTexture.EncodeToPNG();
+
+        string path = Application.persistentDataPath + "/" + FileName + ".png";
+
+        if (imageBytes.Length > 90*90 + 50000)
+        Debug.Log(imageBytes.Length);
+
+        // Debug.Log(path);
+        // File.WriteAllBytes(path, imageBytes);
+
+        return imageBytes;
     }
     
     
