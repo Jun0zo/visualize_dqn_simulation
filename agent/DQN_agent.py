@@ -90,8 +90,8 @@ class DQNAgent(Agent):
 
         # Initialise policy and target networks, set target network to eval mode
         print('device :', self.device)
-        self.policy_net = DQN(self.state_space, self.action_space, filename='test', model_path=self.models_path).to(self.device)
-        self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target', model_path='').to(self.device)
+        self.policy_net = DQN(self.state_space, self.action_space, filename='test', model_path=self.models_path, is_resiger=not train_mode).to(self.device)
+        self.target_net = DQN(self.state_space, self.action_space, filename='test_'+'target', model_path='', is_resiger=not train_mode).to(self.device)
         self.target_net.eval()
 
         if self.tensor_board_path:
@@ -313,7 +313,9 @@ class DQNAgent(Agent):
         history = np.stack((state, state, state, state), axis=0)
         history = np.reshape([history], (4, 1, 84, 84))
         
-        while True:
+        done = False
+        
+        while done:
             action = self.choose_action(history)
             
             done, reward, current_position, observe = self.env.step(action)
@@ -328,6 +330,9 @@ class DQNAgent(Agent):
             self.append_sample(history, action, reward, next_history, int(done))
 
             history = next_history
+            
+        self.policy_net.save_maps_as_images(self.maps_path)
+        print('save ok', self.maps_path)
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ from ..utils import get_highest_number
 
 # This class defines the DQN network structure
 class DQN(nn.Module):
-    def __init__(self, input_dim, output_dim, filename, model_path):
+    def __init__(self, input_dim, output_dim, filename, model_path, is_resiger=False):
         super(DQN, self).__init__()
 
 
@@ -45,13 +45,14 @@ class DQN(nn.Module):
         self.feature_maps = None    # List to store feature maps
         self.attention_maps = None    # List to store attention maps
 
-        '''self.l1[0].register_forward_hook(self.capture_feature_maps)
-        self.l1[2].channel_attention.register_forward_hook(self.capture_attention_maps)
-        self.l1[2].spatial_attention.register_forward_hook(self.capture_attention_maps)
-        self.l1[3].register_forward_hook(self.capture_feature_maps)
-        self.l1[5].channel_attention.register_forward_hook(self.capture_attention_maps)
-        self.l1[5].spatial_attention.register_forward_hook(self.capture_attention_maps)
-        self.l1[6].register_forward_hook(self.capture_feature_maps)'''
+        if is_resiger:
+            self.l1[0].register_forward_hook(self.capture_feature_maps)
+            self.l1[2].channel_attention.register_forward_hook(self.capture_attention_maps)
+            self.l1[2].spatial_attention.register_forward_hook(self.capture_attention_maps)
+            self.l1[3].register_forward_hook(self.capture_feature_maps)
+            self.l1[5].channel_attention.register_forward_hook(self.capture_attention_maps)
+            self.l1[5].spatial_attention.register_forward_hook(self.capture_attention_maps)
+            self.l1[6].register_forward_hook(self.capture_feature_maps)
 
 
         # Save filename for saving model
