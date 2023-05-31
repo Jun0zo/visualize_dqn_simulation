@@ -29,13 +29,23 @@ public class RLAgent : MonoBehaviour
     
     private float previousDistance;
 
+    // stuck check
+    private Vector3 previousPosition;
+    private float timeSinceLastMove;
+
     void Start()
     {
         collisionStateManager = GetComponent<CollisionStateManager>();
         socketClient = GetComponent<SocketClient>();
         agentTransform = transform;
         carController = GetComponent<Car_Controller>();
+
+
+        // stuck check
+        previousPosition = transform.position;
+        timeSinceLastMove = 0f;
         
+        Debug.Log('mmm');
         initVar();
         InvokeRepeating("train", 0f, 0.3f);
     }
@@ -46,13 +56,47 @@ public class RLAgent : MonoBehaviour
         timeLimit = 40f;
     }
 
+    bool isStuck() {
+        Debug.Log('check!')
+         // Check if the position has changed
+        if (transform.position != previousPosition)
+        {
+            // Reset the timer if there is a change in motion
+            timeSinceLastMove = 0f;
+            previousPosition = transform.position;
+
+            
+        }
+        else
+        {
+            // Increment the timer if there is no change in motion
+            timeSinceLastMove += Time.deltaTime;
+
+            // Check if no change in motion for 10 seconds
+            if (timeSinceLastMove >= 10f)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     
 
     void train() {
+        Debug.Log('debug')
         byte[] Imagebytes = getImage();
+
+        agentTransform
 
 
         byte isDone = collisionStateManager.isDone ? (byte)1 : (byte)0;
+
+        if (isStuck()) {
+            isDone = 1;
+        }
+
         float reward = getReward();
         float[] currentPosition = getCurrentPosition();
         
