@@ -1,7 +1,7 @@
 <h2>학습과정</h2>
+<img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/5eecce20-f7b9-4415-b42c-688fc4d8d349">
 
 <h2>기존방안과 제안방안 비교</h2>
-<img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/5eecce20-f7b9-4415-b42c-688fc4d8d349">
 <table>
   <tr>
     <td>기존 방안 (CNN)</td>
@@ -62,3 +62,6 @@
     </td>
   </tr>
 </table>
+
+<h2>험지주행 결과</h2>
+<img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/4e01a466-4882-47f1-a135-cbe0fd5acbef">
