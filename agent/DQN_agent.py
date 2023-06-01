@@ -50,7 +50,7 @@ class DQNAgent(Agent):
                 gamma=0.99,
                 eps_strt=0.99, 
                 eps_end=0.05, 
-                eps_dec=3e-6,
+                eps_dec=1e-4,
                 batch_size=32, 
                 lr=0.001,
                 train_mode=True

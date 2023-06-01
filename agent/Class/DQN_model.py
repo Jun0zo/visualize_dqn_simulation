@@ -6,6 +6,7 @@ from .Additional_model import BottleneckAttentionModule
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
 from ..utils import get_highest_number
+from torchvision.transforms import ToPILImage
 
 
 # This class defines the DQN network structure
@@ -23,10 +24,10 @@ class DQN(nn.Module):
         self.l1 = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=8, stride=4, padding=2),
             nn.ReLU(),
-            # BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
+            BottleneckAttentionModule(32),  # BAM added after the first convolutional layer
             nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            # BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
+            BottleneckAttentionModule(64),  # BAM added after the second convolutional layer
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
         )
@@ -45,7 +46,7 @@ class DQN(nn.Module):
         self.feature_maps = []    # List to store feature maps
         self.attention_maps = []    # List to store attention maps
 
-        is_bam = False
+        is_bam = True
 
         if is_resiger:
             if is_bam:
@@ -75,6 +76,7 @@ class DQN(nn.Module):
     def forward(self, x):
         # self.feature_maps = []  # Clear feature_maps list for each forward pass
         # self.attention_maps = []  # Clear attention_maps list for each forward pass
+
         x = x.to('cuda:0')
         x = self.l1(x)
         x = x.view(x.size(0), -1)
@@ -82,7 +84,6 @@ class DQN(nn.Module):
         return x
     
     def capture_feature_maps(self, module, input, output):
-        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', len(self.feature_maps))
         self.feature_maps.append(output)
 
     def capture_attention_maps(self, module, input, output):
