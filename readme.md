@@ -26,7 +26,7 @@
         기존 방안
     </td>
     <td>
-        <img/>
+        <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/eb5dbf4d-ac2c-4463-9b04-637f43de1133" alt="origin"/>
     </td>
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7619806f-db3e-4aa5-93e2-0622e0ba06fe" alt="el1">
@@ -43,7 +43,7 @@
         제안 방안
     </td>
     <td>
-        <img/>
+        <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/eb5dbf4d-ac2c-4463-9b04-637f43de1133" alt="origin"/>
     </td>
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7619806f-db3e-4aa5-93e2-0622e0ba06fe" alt="el1">
