@@ -1,7 +1,11 @@
+<h2>학습과정</h2>
+
+<h2>기존방안과 제안방안 비교</h2>
+
 <table>
   <tr>
-    <td>기존 방안</td>
-    <td>제안 방안</td>
+    <td>기존 방안 (CNN)</td>
+    <td>제안 방안(Attention based-CNN)</td>
   </tr>
   <tr>
     <td>
@@ -12,6 +16,8 @@
     </td>
   </tr>
 </table>
+
+<h2>Feature Map 비교</h2>
 
 <table>
 <tr>
