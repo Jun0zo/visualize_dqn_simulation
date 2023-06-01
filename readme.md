@@ -1,11 +1,11 @@
 <table>
-  
+  <tr>
+    <td>기존 방안</td>
+    <td>제안 방안</td>
+  </tr>
   <tr>
     <td>
         <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7b2aa31b-e2f0-4c1d-8714-766f8ba0d6b1" alt="el1">
-    </td>
-    <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7b2aa31b-e2f0-4c1d-8714-766f8ba0d6b1" alt="el1">
     </td>
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/54bc31b7-7f1f-4150-b59a-513616015ac5" alt="el2">
@@ -15,6 +15,7 @@
 
 <table>
 <tr>
+    <th>종류</th>
     <th>원본 입력값</th>
     <th>Convolution 1</th>
     <th>Convoluation 2</th>
@@ -23,6 +24,9 @@
   <tr>
     <td>
         기존 방안
+    </td>
+    <td>
+        <img/>
     </td>
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7619806f-db3e-4aa5-93e2-0622e0ba06fe" alt="el1">
@@ -37,6 +41,9 @@
   <tr>
     <td>
         제안 방안
+    </td>
+    <td>
+        <img/>
     </td>
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7619806f-db3e-4aa5-93e2-0622e0ba06fe" alt="el1">
