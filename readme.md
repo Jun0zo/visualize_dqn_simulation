@@ -26,7 +26,6 @@
         기존 방안
     </td>
     <td>
-
         <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/f13721f6-1aa1-412d-b78a-87febbdfa328" alt="origin"/>
     </td>
     <td>
@@ -38,7 +37,6 @@
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/23b3d2e5-61cb-46e1-990b-eb419e30123f" alt="el3">
     </td>
-
   </tr>
   <tr>
     <td>
