@@ -1,18 +1,5 @@
 <table>
   <tr>
-    <th>기존 방안</th>
-    <th>제안 방안</th>
-  </tr>
-  <tr>
-    <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/cce7a880-2fb3-45d8-9a6f-bc7a5389e821" alt="rough">
-    </td>
-    <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/cce7a880-2fb3-45d8-9a6f-bc7a5389e821" alt="rough">
-    <td>
-  </tr>
-
-  <tr>
     <th>원본 입력값</th>
     <th>기존 방안</th>
     <th>제안 방안</th>
@@ -26,6 +13,20 @@
     </td>
     <td>
       <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/54bc31b7-7f1f-4150-b59a-513616015ac5" alt="el2">
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td>
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7619806f-db3e-4aa5-93e2-0622e0ba06fe" alt="el1">
+    </td>
+    <td>
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/fa1612c8-96c3-4282-b6c8-5fc972ac906f" alt="el2">
+    </td>
+    <td>
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/1cc2254c-2f97-4216-a50e-4f96ef4cb7db" alt="el3">
     </td>
   </tr>
 </table>
