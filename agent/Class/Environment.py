@@ -39,8 +39,8 @@ class Environment:
         try:
             # Receive Imagebytes
             rgba_image = Image.open(io.BytesIO(data[13:]))
-            # rgba_image.save(f"{self.idx}.jpg")
-            # self.idx += 1
+            rgba_image.save(f"{self.idx}.jpg")
+            self.idx += 1
             
             gray_image = rgba_image.convert('RGB').convert('L')
             # gray_image.save('./test.jpg')
