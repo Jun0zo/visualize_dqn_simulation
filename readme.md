@@ -32,16 +32,16 @@
         기존 방안
     </td>
     <td>
-        <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/eb5dbf4d-ac2c-4463-9b04-637f43de1133" alt="origin"/>
+        <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/77f43d8e-aff4-45d7-82f5-16c1501e8bda" alt="origin"/>
     </td>
     <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/f13721f6-1aa1-412d-b78a-87febbdfa328" alt="el1">
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/89631dd8-dd8c-4235-b531-bdc20381f316" alt="el1">
     </td>
     <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/35346d70-a5ee-4c9c-92cd-ae36b26df927" alt="el2">
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/68e014bc-c06f-479a-90f3-c4aa5e13fe5e" alt="el2">
     </td>
     <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/23b3d2e5-61cb-46e1-990b-eb419e30123f" alt="el3">
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/3959a278-6598-4085-9944-1e7af1e14e73" alt="el3">
     </td>
   </tr>
   <tr>
@@ -49,16 +49,16 @@
         제안 방안
     </td>
     <td>
-        <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/eb5dbf4d-ac2c-4463-9b04-637f43de1133" alt="origin"/>
+        <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/77f43d8e-aff4-45d7-82f5-16c1501e8bda" alt="origin"/>
     </td>
     <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/7619806f-db3e-4aa5-93e2-0622e0ba06fe" alt="el1">
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/de1c6374-f0a1-48f6-a998-d20d6bf36e7a" alt="el1">
     </td>
     <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/fa1612c8-96c3-4282-b6c8-5fc972ac906f" alt="el2">
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/6b57a3ce-7064-4428-a39c-2f856dc4e6f6" alt="el2">
     </td>
     <td>
-      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/1cc2254c-2f97-4216-a50e-4f96ef4cb7db" alt="el3">
+      <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/49d857fd-26d0-46a0-b844-e3f55038c99e" alt="el3">
     </td>
   </tr>
 </table>
