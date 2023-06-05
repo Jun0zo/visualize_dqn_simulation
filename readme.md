@@ -67,4 +67,5 @@
 <img src="https://github.com/Jun0zo/visualize_dqn_simulation/assets/37208901/3d343eaf-835d-4b8d-bd54-f607d0851a70">
 
 <h2>학회 발표자료</h2>
-[2023_정보기술학회_포스터발표.pdf](https://github.com/Jun0zo/visualize_dqn_simulation/files/11651175/2023_._.pdf)
+2023_정보기술학회_포스터발표
+pdfhttps://github.com/Jun0zo/visualize_dqn_simulation/files/11651175/2023_._.pdf
