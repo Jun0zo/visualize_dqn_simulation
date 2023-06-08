@@ -68,4 +68,4 @@
 
 <h2>학회 발표자료</h2>
 2023_정보기술학회_포스터발표
-pdfhttps://github.com/Jun0zo/visualize_dqn_simulation/files/11651175/2023_._.pdf
+[pdfhttps://github.com/Jun0zo/visualize_dqn_simulation/files/11651175/2023_._.pdf](https://github.com/Jun0zo/visualize_dqn_simulation/blob/main/etc/2023_%EC%A0%95%EB%B3%B4%EA%B8%B0%EC%88%A0%ED%95%99%ED%9A%8C_%ED%8F%AC%EC%8A%A4%ED%84%B0%EB%B0%9C%ED%91%9C.pdf)
