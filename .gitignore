@@ -8,4 +8,4 @@ runs
 __pycache__
 tensor_board/
 
-resutls/
+results/*
