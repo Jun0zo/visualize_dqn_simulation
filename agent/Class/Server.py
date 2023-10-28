@@ -1,6 +1,6 @@
 import socket
 class Server:
-    def __init__(self, host='localhost', port=5000, buffer_size=257*257 + 50000, episodes=10):
+    def __init__(self, host='0.0.0.0', port=5000, buffer_size=84*84*84 + 50000, episodes=10):
         self.HOST = host
         self.PORT = port
         self.BUFFER_SIZE = buffer_size

@@ -4,6 +4,7 @@ from .Server import Server
 from PIL import Image
 from PIL import ImageFile
 import io
+import cv2
 
 BYTE_SIZE = 1
 INT_SIZE = 4
@@ -15,9 +16,9 @@ class Environment:
     def __init__(self):
         self.server = Server()
         self._connect_listen()
-        self.action_dict = {0: 'H', 1: 'W', 2: 'S', 3: 'A', 4: 'D', 5: 'B'}
-        # self.action_dict = {0: 'H', 1: 'A', 2: 'D'}
-
+        # self.action_dict_6 = {0: 'H', 1: 'W', 2: 'S', 3: 'A', 4: 'D', 5: 'B'}
+        self.action_dict = {0: '-', 1: 'W', 2: 'S', 3: 'A', 4: 'D'}
+        
         self.image_mem = None
 
         self.trace = []
@@ -29,30 +30,47 @@ class Environment:
 
 
     def step(self, next_action):
+        print('!!!!!!!!!!!!! next action ', next_action)
         next_action = self.action_dict[next_action]
+        self.server.conn.send(next_action.encode())
+        
 
-        data = self.server.conn.recv(2 + FLOAT_SIZE + 2 * INT_SIZE + self.server.BUFFER_SIZE)
-        is_done = bool(data[0])
-        reward = struct.unpack('f', data[1:5])[0]  # Assuming 'reward' is a float
-        current_position = list(struct.unpack(str(2) + 'f', data[5:13]))  # Assuming 'currentPosition' is a list of two integers
+        received_bytes = self.server.conn.recv(self.server.BUFFER_SIZE)
+        packet_size = struct.unpack('i', received_bytes[:4])[0]
+        is_done = struct.unpack('b', received_bytes[4:5])[0]
+        reward = struct.unpack('f', received_bytes[5:9])[0]
+        current_position = list(struct.unpack('2f', received_bytes[9:17]))
+        image_bytes = received_bytes[17:]
+        print('image bytes :', len(image_bytes))
 
+        received_bytes_len = len(received_bytes)
+        while received_bytes_len < packet_size:
+            image_bytes_plus = self.server.conn.recv(packet_size - len(received_bytes))
+            received_bytes_len += len(image_bytes_plus)
+            image_bytes += image_bytes_plus
+        # print(image_bytes)/
+
+
+        print("info : ", packet_size, is_done, reward, current_position)
         try:
             # Receive Imagebytes
-            rgba_image = Image.open(io.BytesIO(data[13:]))
-            rgba_image.save(f"{self.idx}.jpg")
+            rgba_image = Image.open(io.BytesIO(image_bytes))
+            rgba_image.save(f"results/imgs/{self.idx}.jpg")
             self.idx += 1
             
             gray_image = rgba_image.convert('RGB').convert('L')
             # gray_image.save('./test.jpg')
             image = np.asarray(gray_image) / 255.0
-            
+            cv2.imwrite('(recivend)image_from_bytes2.png', image)
+
             self.image_mem = image
         except Exception as e:
-            print('Image get Fail!', is_done, len(data), e)
+            # print('Image get Fail!', is_done, len(received_bytes), e)
+            print("fail !")
             image = self.image_mem
             # self.server.conn.recv(self.server.BUFFER_SIZE)/
         
-        self.server.conn.send(next_action.encode())
+        
         
         self.trace.append(current_position)
         return is_done, reward, current_position, image

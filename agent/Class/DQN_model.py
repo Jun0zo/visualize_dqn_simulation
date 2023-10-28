@@ -13,8 +13,6 @@ from torchvision.transforms import ToPILImage
 class DQN(nn.Module):
     def __init__(self, input_dim, output_dim, filename, model_path, is_resiger=False):
         super(DQN, self).__init__()
-
-
         self.model_path = model_path
 
         self.input_dim = input_dim

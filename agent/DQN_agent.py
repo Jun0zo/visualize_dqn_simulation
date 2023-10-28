@@ -123,6 +123,7 @@ class DQNAgent(Agent):
         except Exception as e:
             print('loading epsilon vale file failed : ', e)
 
+
     def save_last(self):
         if  self.train_mode:
             print("traces :", self.traces_path)
@@ -257,9 +258,9 @@ class DQNAgent(Agent):
                     else:
                         action = self.choose_action(history)
                     
-                    
+                    print("==============================")
                     done, reward, current_position, observe = self.env.step(action)
-
+                    print('observe shape', observe.shape)
                     # self.writer.add_scalars(f'car/{episode_idx}/position', {'x': current_position[0], 'y': current_position[1]}, global_step=episode_idx)
                     
                     print(done, reward, current_position, 'action : ', action)
@@ -311,6 +312,7 @@ class DQNAgent(Agent):
         # Reset environment and preprocess state
         _, _, _, obs = self.env.step(1)
         state = obs
+        print('state shape', state.shape, type(state))
         history = np.stack((state, state, state, state), axis=0)
         history = np.reshape([history], (4, 1, 84, 84))
         
@@ -340,7 +342,7 @@ class DQNAgent(Agent):
 if __name__ == '__main__':
     env = Environment()
     agent = DQNAgent(env,
-                     state_space=(1, 256, 256), 
+                     state_space=(1, 256, 256),
                      action_space=6,
                      results_path='.\\results\\run_1')
     
