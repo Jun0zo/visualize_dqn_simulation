@@ -13,7 +13,8 @@ FLOAT_SIZE = 4
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class Environment:
-    def __init__(self):
+    def __init__(self, results_path):
+        self.results_path = results_path
         self.server = Server()
         self._connect_listen()
         # self.action_dict_6 = {0: 'H', 1: 'W', 2: 'S', 3: 'A', 4: 'D', 5: 'B'}
@@ -21,16 +22,21 @@ class Environment:
         
         self.image_mem = None
 
-        self.trace = []
+        self.trace_fd = None
 
         self.idx = 0
+        
+    def position_trace_start(self):
+        self.trace_fd = open(self.results_path + '\\trace.txt', 'a')
+    
+    def position_trace_end(self):
+        self.trace_fd.close()
     
     def _connect_listen(self):
         self.server.listen()
 
 
     def step(self, next_action):
-        print('!!!!!!!!!!!!! next action ', next_action)
         next_action = self.action_dict[next_action]
         self.server.conn.send(next_action.encode())
         
@@ -41,7 +47,6 @@ class Environment:
         reward = struct.unpack('f', received_bytes[5:9])[0]
         current_position = list(struct.unpack('2f', received_bytes[9:17]))
         image_bytes = received_bytes[17:]
-        print('image bytes :', len(image_bytes))
 
         received_bytes_len = len(received_bytes)
         while received_bytes_len < packet_size:
@@ -55,13 +60,13 @@ class Environment:
         try:
             # Receive Imagebytes
             rgba_image = Image.open(io.BytesIO(image_bytes))
-            rgba_image.save(f"results/imgs/{self.idx}.jpg")
+            rgba_image.save(f"{self.results_path}/imgs/{self.idx}.jpg")
             self.idx += 1
             
             gray_image = rgba_image.convert('RGB').convert('L')
             # gray_image.save('./test.jpg')
             image = np.asarray(gray_image) / 255.0
-            cv2.imwrite('(recivend)image_from_bytes2.png', image)
+            # cv2.imwrite('(recivend)image_from_bytes2.png', image)
 
             self.image_mem = image
         except Exception as e:
@@ -70,9 +75,7 @@ class Environment:
             image = self.image_mem
             # self.server.conn.recv(self.server.BUFFER_SIZE)/
         
-        
-        
-        self.trace.append(current_position)
+        self.trace_fd.write(', '.join(map(str, current_position)) + '\n')
         return is_done, reward, current_position, image
 
     def get_trace(self):

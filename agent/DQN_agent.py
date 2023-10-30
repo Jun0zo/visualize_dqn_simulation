@@ -22,6 +22,7 @@ class Agent:
         self.models_path = os.path.join(results_path, 'models')
         self.traces_path = os.path.join(results_path, 'traces')
         self.maps_path = os.path.join(results_path, 'maps')
+        self.imgs_path = os.path.join(results_path, 'imgs')
         self.save_model_path='models'
     
         self.results_path = results_path
@@ -32,6 +33,7 @@ class Agent:
         os.makedirs(self.results_path, exist_ok=True)
         os.makedirs(self.models_path, exist_ok=True)
         os.makedirs(self.traces_path, exist_ok=True)
+        os.makedirs(self.imgs_path, exist_ok=True)
 
     def get_episode_start_cnt(self):
         return get_highest_number(self.models_path) + 1
@@ -66,9 +68,10 @@ class DQNAgent(Agent):
         self.eps_dec = eps_dec
         self.eps_end = eps_end
         self.train_mode = train_mode
+        
+        self.env.position_trace_start()
 
         if not self.train_mode:
-            
             self.eps = 0
 
         self.episode_idx_mem = -1
@@ -131,7 +134,9 @@ class DQNAgent(Agent):
                 json.dump({"eps":self.eps}, json_file)
 
             self.policy_net.save_model(file_idx=self.episode_idx_mem)
-            self.env.save_trace(os.path.join(self.traces_path, f"{self.episode_idx_mem}.txt"))
+            
+            # self.env.save_trace(os.path.join(self.traces_path, f"{self.episode_idx_mem}.txt"))
+            
 
     # Updates the target net to have same weights as policy net
     def replace_target_net(self):
@@ -298,7 +303,7 @@ class DQNAgent(Agent):
 
                 if episode_idx % 10 == 0:
                     self.policy_net.save_model(file_idx=episode_idx)
-                    self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
+                    # self.env.save_trace(os.path.join(self.traces_path, f"{episode_idx}.txt"))
                 done = False
 
         except KeyboardInterrupt:
@@ -307,6 +312,7 @@ class DQNAgent(Agent):
             
 
         self.writer.close()
+        self.env.position_trace_end()
 
     def play(self):
         # Reset environment and preprocess state
